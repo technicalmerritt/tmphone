@@ -85,6 +85,28 @@ function registerIpc() {
     try { const out = path.join(app.getPath('temp'), 'tmphone-crash-' + Date.now()); await fsp.mkdir(out, { recursive: true }); return await idevice.crashReports((a && a.udid) || '', out); }
     catch (err) { return { ok: false, reason: (err && err.message) || String(err) }; }
   });
+  ipcMain.handle('idevice:backup', async (_e, a) => {
+    try {
+      const udid = (a && a.udid) || '';
+      const base = path.join(getDataDir(), 'Backups');
+      await fsp.mkdir(base, { recursive: true });
+      const pick = await dialog.showOpenDialog(mainWindow, {
+        title: 'Choose where to save the backup',
+        defaultPath: base,
+        properties: ['openDirectory', 'createDirectory'],
+      });
+      if (pick.canceled || !pick.filePaths || !pick.filePaths[0]) return { ok: false, canceled: true };
+      const dest = pick.filePaths[0];
+      await fsp.mkdir(dest, { recursive: true });
+      return await idevice.backupDevice(udid, dest, (m) => {
+        if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('idevice:backupProgress', m);
+      });
+    } catch (err) { return { ok: false, reason: (err && err.message) || String(err) }; }
+  });
+  ipcMain.handle('idevice:revealPath', async (_e, a) => {
+    try { await shell.openPath(String((a && a.path) || '')); return { ok: true }; }
+    catch (err) { return { ok: false, reason: (err && err.message) || String(err) }; }
+  });
   ipcMain.handle('idevice:openToolsDir', async () => {
     try { const d = idevice.installDir(); await fsp.mkdir(d, { recursive: true }); await shell.openPath(d); return { ok: true, dir: d }; }
     catch (err) { return { ok: false, reason: (err && err.message) || String(err) }; }

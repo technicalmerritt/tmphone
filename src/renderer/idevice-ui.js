@@ -57,18 +57,37 @@
     try { window.idevice.watch(true); } catch { /* ignore */ }
   }
 
+  let autoReadUdid = null;   // UDID we've already auto-read (avoid re-reading)
+  let autoTimer = null;
+  let reading = false;
+
   function reflectDevices() {
     if (devices.length) {
-      setConn('on', devices.length === 1 ? 'Device connected — ready to read' : devices.length + ' devices connected');
+      setConn('on', devices.length === 1 ? 'Device connected' : devices.length + ' devices connected');
       enableButtons(true);
+      maybeAutoRead();
     } else {
       setConn('wait', 'No device detected — connect, unlock and tap “Trust”');
       enableButtons(false);
+      // Device unplugged: reset so the next one is read fresh, and clear view.
+      autoReadUdid = null;
+      if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
+      current = null;
+      show(els.content, false); show(els.busy, false);
     }
+  }
+
+  // Auto-read a newly connected device (debounced so Trust/services can settle).
+  function maybeAutoRead() {
+    const udid = devices[0];
+    if (!udid || reading || udid === autoReadUdid) return;
+    if (autoTimer) clearTimeout(autoTimer);
+    autoTimer = setTimeout(() => { readDevice(); }, 1200);
   }
 
   function enableButtons(on) {
     if (els.readBtn) els.readBtn.disabled = !on;
+    if (els.backupBtn) els.backupBtn.disabled = !on || backingUp;
     // report/syncro only make sense once we have a reading
     const haveRecord = !!current;
     if (els.reportBtn) els.reportBtn.disabled = !haveRecord;
@@ -204,23 +223,62 @@
   }
 
   async function readDevice() {
-    if (!window.idevice || !devices.length) return;
+    if (!window.idevice || !devices.length || reading) return;
+    const udid = devices[0];
+    reading = true;
     show(els.error, false); show(els.content, false); show(els.busy, true);
     try {
-      const res = await window.idevice.read(devices[0]);
+      const res = await window.idevice.read(udid);
       show(els.busy, false);
+      reading = false;
       if (!res || !res.ok) {
         els.errDetail.textContent = (res && res.reason) || 'Unknown error.';
         show(els.error, true);
+        // Likely "not trusted yet" — retry automatically while it stays plugged in.
+        if (devices[0] === udid) { if (autoTimer) clearTimeout(autoTimer); autoTimer = setTimeout(() => maybeAutoRead(), 3000); }
         return;
       }
+      autoReadUdid = udid; // mark as read so we don't loop
       current = res.record;
       render(res.record, res.analysis);
       enableButtons(true);
     } catch (err) {
       show(els.busy, false);
+      reading = false;
       els.errDetail.textContent = (err && err.message) || String(err);
       show(els.error, true);
+    }
+  }
+
+  let backingUp = false;
+  async function backupDevice() {
+    if (!window.idevice || !devices.length || backingUp) return;
+    const udid = devices[0];
+    backingUp = true;
+    if (els.backupBtn) els.backupBtn.disabled = true;
+    show(els.backup, true);
+    if (els.backupBar) els.backupBar.style.width = '0%';
+    if (els.backupMsg) els.backupMsg.textContent = 'Starting backup… (keep the device connected and unlocked — this can take several minutes)';
+    try {
+      const r = await window.idevice.backup(udid);
+      backingUp = false;
+      if (els.backupBtn) els.backupBtn.disabled = false;
+      if (r && r.canceled) { show(els.backup, false); return; }
+      if (r && r.ok) {
+        if (els.backupBar) els.backupBar.style.width = '100%';
+        if (els.backupMsg) {
+          els.backupMsg.innerHTML = 'Backup complete. <a href="#" id="idevBackupOpen">Open folder</a>';
+          const open = document.getElementById('idevBackupOpen');
+          if (open) open.addEventListener('click', (e) => { e.preventDefault(); window.idevice.revealPath(r.dir); });
+        }
+        toast('Backup complete');
+      } else {
+        if (els.backupMsg) els.backupMsg.textContent = 'Backup failed: ' + ((r && r.reason) || 'unknown');
+      }
+    } catch (err) {
+      backingUp = false;
+      if (els.backupBtn) els.backupBtn.disabled = false;
+      if (els.backupMsg) els.backupMsg.textContent = 'Backup failed: ' + ((err && err.message) || String(err));
     }
   }
 
@@ -279,6 +337,7 @@
       busy: $('#idevBusy'), error: $('#idevError'), errDetail: $('#idevErrorDetail'),
       content: $('#idevContent'),
       readBtn: $('#idevReadBtn'), reportBtn: $('#idevReportBtn'), syncroBtn: $('#idevSyncroBtn'),
+      backupBtn: $('#idevBackupBtn'), backup: $('#idevBackup'), backupBar: $('#idevBackupBar'), backupMsg: $('#idevBackupMsg'),
       installBtn: $('#idevInstallBtn'), openDirBtn: $('#idevOpenDirBtn'), installMsg: $('#idevInstallMsg'),
     };
     if (!els.readBtn) return; // panel not present
@@ -287,6 +346,14 @@
     if (els.openDirBtn) els.openDirBtn.addEventListener('click', () => { try { window.idevice.openToolsDir(); } catch { /* ignore */ } });
 
     els.readBtn.addEventListener('click', readDevice);
+    if (els.backupBtn) els.backupBtn.addEventListener('click', backupDevice);
+    if (window.idevice && window.idevice.onBackupProgress) {
+      window.idevice.onBackupProgress((m) => {
+        if (!m) return;
+        if (els.backupBar && m.pct >= 0) els.backupBar.style.width = m.pct + '%';
+        if (els.backupMsg) els.backupMsg.textContent = (m.pct >= 0 ? m.pct + '% — ' : '') + (m.line || 'Backing up…');
+      });
+    }
     els.reportBtn.addEventListener('click', exportReport);
     if (els.syncroBtn) {
       els.syncroBtn.title = 'Coming next: one-click asset registration in Syncro';

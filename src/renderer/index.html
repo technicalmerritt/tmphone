@@ -43,9 +43,14 @@
       </div>
       <div class="info-top__actions">
         <button id="idevReadBtn" class="btn btn--primary" type="button" disabled>Read device</button>
+        <button id="idevBackupBtn" class="btn btn--ghost" type="button" disabled>Back up device</button>
         <button id="idevReportBtn" class="btn btn--ghost" type="button" disabled>Export report</button>
         <button id="idevSyncroBtn" class="btn btn--ghost" type="button" disabled>Register in Syncro</button>
       </div>
+    </div>
+    <div id="idevBackup" class="idev-backup" hidden>
+      <div class="idev-bar"><div id="idevBackupBar" class="idev-bar__fill idev-bar__fill--ok" style="width:0%"></div></div>
+      <p id="idevBackupMsg" class="muted"></p>
     </div>
 
     <div id="idevConn" class="idev-conn">

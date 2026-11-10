@@ -1,5 +1,5 @@
 {
-  "version": "0.1.3",
-  "notes": "Fixes: the update bar no longer lingers when you're up to date (it only appears for a real update; a manual check shows a brief 'up to date' toast). The 'Reading device' spinner now only shows while a read is in progress, not constantly. Both were caused by a CSS rule overriding the hidden state.",
-  "zip": "tmphone-app-0.1.3.zip"
+  "version": "0.1.4",
+  "notes": "New: devices now read automatically the moment you connect one (no need to click Read). New: 'Back up device' makes a full iTunes-style backup to a folder you choose, with progress. Keep the device unlocked during a backup.",
+  "zip": "tmphone-app-0.1.4.zip"
 }

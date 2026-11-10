@@ -132,3 +132,6 @@ body {
 .dl-status.bad { color:var(--danger); }
 .dl-card__action { flex-shrink:0; }
 .dl-foot { margin-top:16px; font-size:12px; }
+.idev-backup { margin-top:12px; background:var(--bg-elev); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; }
+.idev-backup .idev-bar { margin:0 0 8px; }
+.idev-backup a { color:var(--accent); }

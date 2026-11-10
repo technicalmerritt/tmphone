@@ -14,7 +14,7 @@
 
 const path = require('node:path');
 const fs = require('node:fs');
-const { execFile } = require('node:child_process');
+const { execFile, spawn } = require('node:child_process');
 const parse = require('./idevice-parse');
 
 const IS_WIN = process.platform === 'win32';
@@ -142,6 +142,42 @@ async function crashReports(udid, outDir) {
   return { ok: r.ok, hints: hits };
 }
 
+// Full device backup via idevicebackup2 (same format iTunes/Finder makes).
+// Long-running, so we stream progress lines to onProgress instead of buffering.
+function backupDevice(udid, destDir, onProgress) {
+  return new Promise((resolve) => {
+    const dir = resolveToolDir();
+    if (!dir) return resolve({ ok: false, reason: 'Apple device tools are not installed.' });
+    const file = toolPath(dir, 'idevicebackup2');
+    if (IS_WIN && !fs.existsSync(file)) {
+      return resolve({ ok: false, reason: 'idevicebackup2 is not in your installed tools. Reinstall the tools from the Downloads tab.' });
+    }
+    const args = [];
+    if (udid) args.push('-u', udid);
+    args.push('backup', '--full', destDir);
+    let p;
+    try { p = spawn(IS_WIN ? file : 'idevicebackup2', args, { windowsHide: true }); }
+    catch (e) { return resolve({ ok: false, reason: (e && e.message) || String(e) }); }
+    let lastLine = '';
+    const onData = (buf) => {
+      for (const line of buf.toString().split(/\r?\n/)) {
+        const t = line.trim();
+        if (!t) continue;
+        lastLine = t;
+        const m = /(\d+)(?:\.\d+)?%/.exec(t);
+        if (onProgress) { try { onProgress({ pct: m ? parseInt(m[1], 10) : -1, line: t }); } catch { /* ignore */ } }
+      }
+    };
+    p.stdout.on('data', onData);
+    p.stderr.on('data', onData);
+    p.on('error', (e) => resolve({ ok: false, reason: (e && e.message) || String(e) }));
+    p.on('close', (code) => {
+      if (code === 0) resolve({ ok: true, dir: destDir });
+      else resolve({ ok: false, reason: 'Backup did not finish (exit ' + code + '). ' + lastLine });
+    });
+  });
+}
+
 async function status() {
   const dir = resolveToolDir();
   if (!dir) {
@@ -171,7 +207,7 @@ async function status() {
 }
 
 module.exports = {
-  configure, status, listDevices, readDevice, crashReports,
+  configure, status, listDevices, readDevice, crashReports, backupDevice,
   toolsPresent, resolveToolDir, verifyDir, installDir, bundledDir,
   ESSENTIAL, OPTIONAL,
 };
