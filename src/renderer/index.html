@@ -19,6 +19,7 @@
       <button class="nav__tab nav__tab--active" data-view="device" type="button">Device</button>
       <button class="nav__tab" data-view="photos" type="button">Photos</button>
       <button class="nav__tab" data-view="downloads" type="button">Downloads</button>
+      <button class="nav__tab" data-view="settings" type="button">Settings</button>
     </nav>
     <div class="top__right">
       <button id="updBtn" class="btn btn--ghost btn--sm" type="button">Check for updates</button>
@@ -118,6 +119,21 @@
       <pre id="idevErrorDetail" class="finding__detail"></pre>
     </div>
 
+    <!-- Register in Syncro panel -->
+    <div id="idevSyncro" class="idev-syncro" hidden>
+      <h2>Register in Syncro</h2>
+      <p class="muted" id="idevSyncroInfo">Find the customer this device belongs to, then register it as an asset.</p>
+      <div class="idev-syncro__search">
+        <input id="idevSyncroQuery" type="text" placeholder="Search customer name, business or email…" autocomplete="off" />
+        <button id="idevSyncroFind" class="btn btn--ghost" type="button">Search</button>
+      </div>
+      <div id="idevSyncroResults" class="idev-syncro__results"></div>
+      <p id="idevSyncroMsg" class="muted"></p>
+      <div class="idev-syncro__actions">
+        <button id="idevSyncroClose" class="btn btn--ghost" type="button">Close</button>
+      </div>
+    </div>
+
     <div id="idevContent" class="idev-content" hidden></div>
   </main>
 
@@ -154,9 +170,35 @@
     <p class="muted dl-foot">Downloads come from an online list, so if a source ever moves it can be fixed without updating the app.</p>
   </main>
 
+  <!-- ============ SETTINGS VIEW ============ -->
+  <main class="wrap view" id="view-settings" hidden>
+    <div class="info-top"><div class="info-top__text">
+      <h2 class="view__h">Settings — Syncro</h2>
+      <p class="muted">Connect TM Phone to your Syncro account so you can register phones as assets. Credentials are saved in the app's config (they travel with the USB stick).</p>
+    </div></div>
+    <div class="set-card">
+      <label class="set-field"><span>Syncro subdomain</span>
+        <input id="setSub" type="text" placeholder="yourshop (or yourshop.syncromsp.com)" autocomplete="off" />
+      </label>
+      <label class="set-field"><span>API token</span>
+        <input id="setToken" type="password" placeholder="Paste your Syncro API token" autocomplete="off" />
+      </label>
+      <div class="set-actions">
+        <button id="setSave" class="btn btn--primary" type="button">Save</button>
+        <button id="setTest" class="btn btn--ghost" type="button">Test connection</button>
+      </div>
+      <p id="setStatus" class="muted set-status"></p>
+      <label class="set-field"><span>Default asset type for phones</span>
+        <select id="setAssetType"><option value="">— connect first, then pick —</option></select>
+      </label>
+      <p class="muted set-hint">Tip: create an asset type in Syncro (e.g. “Mobile Device”) with fields like IMEI, Serial, Battery Health — TM Phone fills them in.</p>
+    </div>
+  </main>
+
   <script src="idevice-ui.js"></script>
   <script src="photos-ui.js"></script>
   <script src="downloads-ui.js"></script>
+  <script src="settings-ui.js"></script>
   <script src="update-ui.js"></script>
   <script src="nav.js"></script>
 </body>

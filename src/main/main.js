@@ -13,6 +13,8 @@ const idevice = require('./idevice/idevice');
 const updater = require('./update');
 const http = require('./httpget');
 const { extract } = require('./extract');
+const config = require('./config');
+const syncro = require('./syncro');
 
 let mainWindow = null;
 
@@ -40,6 +42,7 @@ function getDataDir() {
 }
 
 idevice.configure({ dataDir: getDataDir() });
+config.configure({ dataDir: getDataDir() });
 
 function sendUpdateProgress(m) { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('update:progress', m); }
 
@@ -231,6 +234,41 @@ function registerIpc() {
   // ---- self-update ----
   ipcMain.handle('update:check', async () => { try { return await updater.checkForUpdate(); } catch (err) { return { ok: false, reason: (err && err.message) || String(err) }; } });
   ipcMain.handle('update:apply', async () => { try { return await updater.applyUpdate(sendUpdateProgress); } catch (err) { return { ok: false, reason: (err && err.message) || String(err) }; } });
+
+  // ---- Syncro ----
+  ipcMain.handle('syncro:get', async () => config.getSyncroPublic());
+  ipcMain.handle('syncro:save', async (_e, a) => config.saveSyncro(a || {}));
+  ipcMain.handle('syncro:test', async (_e, a) => {
+    const cur = await config.getSyncro();
+    return syncro.testConnection({ subdomain: (a && a.subdomain) || cur.subdomain, token: (a && a.token) || cur.token });
+  });
+  ipcMain.handle('syncro:assetTypes', async () => {
+    const c = await config.getSyncro();
+    return syncro.listAssetTypes({ subdomain: c.subdomain, token: c.token });
+  });
+  ipcMain.handle('syncro:searchCustomers', async (_e, a) => {
+    const c = await config.getSyncro();
+    return syncro.searchCustomers({ subdomain: c.subdomain, token: c.token, query: (a && a.query) || '' });
+  });
+  ipcMain.handle('syncro:register', async (_e, a) => {
+    const c = await config.getSyncro();
+    const rec = (a && a.record) || {};
+    const b = rec.battery || {}; const st = rec.storage || {}; const act = rec.activation || {};
+    const props = {
+      Model: rec.model, 'Model ID': rec.productType, Serial: rec.serial, IMEI: rec.imei,
+      UDID: rec.udid, 'iOS Version': rec.iosVersion,
+      'Battery Health %': b.healthPct != null ? String(b.healthPct) : '',
+      'Battery Cycles': b.cycleCount != null ? String(b.cycleCount) : '',
+      Storage: st.totalGB ? (st.freeGB + ' GB free of ' + st.totalGB + ' GB') : '',
+      'Activation Lock': act.findMyKnown ? (act.findMyEnabled ? 'ON' : 'OFF') : 'unknown',
+      'Phone Number': rec.phoneNumber, 'Last Checked': new Date().toISOString().slice(0, 10),
+    };
+    for (const k of Object.keys(props)) if (!props[k]) delete props[k];
+    return syncro.registerAsset({
+      subdomain: c.subdomain, token: c.token, customerId: (a && a.customerId),
+      assetTypeId: c.assetTypeId, name: rec.model || 'iPhone', serial: rec.serial || rec.imei, properties: props,
+    });
+  });
 
   ipcMain.handle('app:version', async () => app.getVersion());
 }

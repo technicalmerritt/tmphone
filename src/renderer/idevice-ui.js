@@ -379,6 +379,46 @@
     }
   }
 
+  // ---- Syncro registration ----
+  async function openSyncro() {
+    if (!current) { toast('Read a device first.'); return; }
+    if (!window.syncro) return;
+    const s = await window.syncro.get();
+    if (!s || !s.subdomain || !s.hasToken) { toast('Set up Syncro in the Settings tab first.'); return; }
+    if (!s.assetTypeId) { toast('Choose a default asset type in Settings first.'); return; }
+    if (els.syncroInfo) els.syncroInfo.textContent = 'Registering: ' + (current.model || 'device') + (current.serial ? ' · ' + current.serial : '') + '. Find the customer:';
+    if (els.syncroResults) els.syncroResults.innerHTML = '';
+    if (els.syncroMsg) els.syncroMsg.textContent = '';
+    show(els.syncro, true);
+    if (els.syncroQuery) els.syncroQuery.focus();
+  }
+
+  async function syncroSearch() {
+    const q = els.syncroQuery ? els.syncroQuery.value.trim() : '';
+    if (!q) return;
+    els.syncroMsg.textContent = 'Searching…';
+    els.syncroResults.innerHTML = '';
+    try {
+      const r = await window.syncro.searchCustomers(q);
+      if (!r || !r.ok) { els.syncroMsg.textContent = (r && r.message) || 'Search failed.'; return; }
+      if (!r.customers.length) { els.syncroMsg.textContent = 'No customers matched.'; return; }
+      els.syncroMsg.textContent = '';
+      els.syncroResults.innerHTML = r.customers.map((c) => `<button class="idev-cust" data-id="${c.id}" type="button"><strong>${esc(c.name)}</strong>${c.email ? ' <span class="muted">' + esc(c.email) + '</span>' : ''}</button>`).join('');
+      els.syncroResults.querySelectorAll('.idev-cust').forEach((b) => b.addEventListener('click', () => registerTo(b.dataset.id, b.textContent)));
+    } catch (err) { els.syncroMsg.textContent = 'Search failed: ' + ((err && err.message) || String(err)); }
+  }
+
+  async function registerTo(customerId, label) {
+    if (!current) return;
+    els.syncroMsg.textContent = 'Registering to ' + label + '…';
+    els.syncroResults.innerHTML = '';
+    try {
+      const r = await window.syncro.register({ customerId: isNaN(+customerId) ? customerId : +customerId, record: current });
+      if (r && r.ok) { els.syncroMsg.textContent = r.message + ' (' + r.action + ')'; toast('Registered in Syncro'); setTimeout(() => show(els.syncro, false), 1800); }
+      else els.syncroMsg.textContent = (r && r.message) || 'Registration failed.';
+    } catch (err) { els.syncroMsg.textContent = 'Registration failed: ' + ((err && err.message) || String(err)); }
+  }
+
   function buildReportText(r) {
     const L = [];
     L.push('APPLE DEVICE REPORT — ' + new Date().toLocaleString());
@@ -440,6 +480,8 @@
       fwLatest: $('#idevFwLatest'), fwLocal: $('#idevFwLocal'), fwPick: $('#idevFwPick'), fwPath: $('#idevFwPath'),
       wipeAck: $('#idevWipeAck'), wipeConfirm: $('#idevWipeConfirm'), wipeStart: $('#idevWipeStart'), wipeCancel: $('#idevWipeCancel'),
       wipeProg: $('#idevWipeProg'), wipeBar: $('#idevWipeBar'), wipeMsg: $('#idevWipeMsg'),
+      syncro: $('#idevSyncro'), syncroInfo: $('#idevSyncroInfo'), syncroQuery: $('#idevSyncroQuery'),
+      syncroFind: $('#idevSyncroFind'), syncroResults: $('#idevSyncroResults'), syncroMsg: $('#idevSyncroMsg'), syncroClose: $('#idevSyncroClose'),
     };
     if (!els.readBtn) return; // panel not present
 
@@ -478,10 +520,10 @@
       });
     }
     els.reportBtn.addEventListener('click', exportReport);
-    if (els.syncroBtn) {
-      els.syncroBtn.title = 'Coming next: one-click asset registration in Syncro';
-      els.syncroBtn.addEventListener('click', () => toast('Syncro registration is the next phase — coming soon.'));
-    }
+    if (els.syncroBtn) els.syncroBtn.addEventListener('click', openSyncro);
+    if (els.syncroClose) els.syncroClose.addEventListener('click', () => show(els.syncro, false));
+    if (els.syncroFind) els.syncroFind.addEventListener('click', syncroSearch);
+    if (els.syncroQuery) els.syncroQuery.addEventListener('keydown', (e) => { if (e.key === 'Enter') syncroSearch(); });
 
     refreshStatus(); // starts the connect-watcher itself once tools are confirmed
   }

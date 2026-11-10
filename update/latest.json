@@ -1,5 +1,5 @@
 {
-  "version": "0.2.0",
-  "notes": "New Photos tab: browse the device's camera-roll folders, see thumbnails (iPhone HEIC photos are decoded for preview), select and export photos/videos to the PC. If you updated in-app rather than installing the fresh build, HEIC previews may show a placeholder until you run the latest full build (which bundles the photo decoder); folders, JPG/PNG previews and export work either way.",
-  "zip": "tmphone-app-0.2.0.zip"
+  "version": "0.2.1",
+  "notes": "Syncro is now hooked up. New Settings tab: enter your Syncro subdomain + API token, test the connection, and pick a default asset type for phones. On the Device tab, 'Register in Syncro' now works: search the customer, and TM Phone creates (or updates) a phone asset pre-filled with model, serial, IMEI, UDID, iOS, battery health, storage and Activation Lock status.",
+  "zip": "tmphone-app-0.2.1.zip"
 }

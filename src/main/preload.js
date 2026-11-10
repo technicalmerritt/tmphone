@@ -41,6 +41,15 @@ contextBridge.exposeInMainWorld('updater', {
   onProgress: (cb) => ipcRenderer.on('update:progress', (_e, m) => cb(m)),
 });
 
+contextBridge.exposeInMainWorld('syncro', {
+  get: () => ipcRenderer.invoke('syncro:get'),
+  save: (payload) => ipcRenderer.invoke('syncro:save', payload),
+  test: (payload) => ipcRenderer.invoke('syncro:test', payload),
+  assetTypes: () => ipcRenderer.invoke('syncro:assetTypes'),
+  searchCustomers: (query) => ipcRenderer.invoke('syncro:searchCustomers', { query }),
+  register: (args) => ipcRenderer.invoke('syncro:register', args),
+});
+
 contextBridge.exposeInMainWorld('appInfo', {
   version: () => ipcRenderer.invoke('app:version'),
 });
