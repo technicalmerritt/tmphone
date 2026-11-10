@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self';" />
+  <title>TM Phone</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="brand__ico">📱</span>
+      <div>
+        <h1>TM Phone</h1>
+        <p class="muted">iPhone &amp; iPad diagnostics for the bench</p>
+      </div>
+    </div>
+    <span id="appVersion" class="muted top__ver"></span>
+  </header>
+
+  <main class="wrap">
+    <div class="info-top">
+      <div class="info-top__text">
+        <p class="muted">Plug in an iPhone or iPad (unlocked, with “Trust This Computer” tapped) to read its full identity, battery health, storage, software and ownership status. Read-only — nothing is changed on the device.</p>
+      </div>
+      <div class="info-top__actions">
+        <button id="idevReadBtn" class="btn btn--primary" type="button" disabled>Read device</button>
+        <button id="idevReportBtn" class="btn btn--ghost" type="button" disabled>Export report</button>
+        <button id="idevSyncroBtn" class="btn btn--ghost" type="button" disabled>Register in Syncro</button>
+      </div>
+    </div>
+
+    <div id="idevConn" class="idev-conn">
+      <span id="idevConnDot" class="idev-dot idev-dot--off" aria-hidden="true"></span>
+      <span id="idevConnText" class="muted">Checking for Apple device tools…</span>
+    </div>
+
+    <div id="idevSetup" class="scan-error" hidden>
+      <h3>One-time setup: install Apple device support</h3>
+      <p class="muted" id="idevSetupMsg"></p>
+      <ol class="muted idev-setup-list">
+        <li><strong>Apple driver:</strong> install Apple’s Mobile Device driver via <strong>iTunes</strong> or the free <strong>Apple Devices</strong> app from the Microsoft Store (provides the USB connection service).</li>
+        <li><strong>Reader tools:</strong> get a vetted copy of the open-source <strong>libimobiledevice</strong> Windows tools (a .zip with <code>ideviceinfo.exe</code>, <code>idevice_id.exe</code>, <code>idevicediagnostics.exe</code> and their DLLs), then click <em>Install from file…</em>. They’re saved next to the app so they travel with it on a USB stick.</li>
+        <li>Connect a device, unlock it and tap <strong>Trust</strong>, then press <em>Read device</em>.</li>
+      </ol>
+      <div class="idev-setup-actions">
+        <button id="idevInstallBtn" class="btn btn--primary" type="button">Install from file…</button>
+        <button id="idevOpenDirBtn" class="btn btn--ghost" type="button">Open tools folder</button>
+      </div>
+      <p id="idevInstallMsg" class="muted" hidden></p>
+    </div>
+
+    <div id="idevBusy" class="scan-status" hidden>
+      <div class="spinner" aria-hidden="true"></div>
+      <p class="muted">Reading device…</p>
+    </div>
+    <div id="idevError" class="scan-error" hidden>
+      <h3>Couldn’t read the device</h3>
+      <pre id="idevErrorDetail" class="finding__detail"></pre>
+    </div>
+
+    <div id="idevContent" class="idev-content" hidden></div>
+  </main>
+
+  <script src="idevice-ui.js"></script>
+  <script>
+    if (window.appInfo && window.appInfo.version) {
+      window.appInfo.version().then((v) => { var e = document.getElementById('appVersion'); if (e && v) e.textContent = 'v' + v; }).catch(function(){});
+    }
+  </script>
+</body>
+</html>

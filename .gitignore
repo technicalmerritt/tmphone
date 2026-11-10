@@ -1,0 +1,14 @@
+node_modules/
+release/
+dist/
+# Never commit third-party binaries or the on-device tool cache
+**/bin/
+*.exe
+*.dll
+*.pyd
+TM-Phone-Data/
+# Signing keys / secrets, if ever added
+*.pem
+vendor/
+.DS_Store
+Thumbs.db
