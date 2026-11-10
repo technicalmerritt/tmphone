@@ -1,6 +1,6 @@
 {
   "name": "tm-phone",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "TM Phone — standalone iPhone/iPad diagnostics for the repair bench by Technical Merritt Computer Services.",
   "license": "UNLICENSED",
   "private": true,
@@ -24,9 +24,7 @@
       "src/**/*",
       "package.json"
     ],
-    "asarUnpack": [
-      "**/idevice/**"
-    ],
+    "asar": false,
     "win": {
       "signAndEditExecutable": false,
       "target": [

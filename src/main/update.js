@@ -95,7 +95,17 @@ async function applyUpdate(onProgress) {
     }
   }
   if (onProgress) onProgress({ phase: 'install', pct: -1 });
-  await copyTree(root, appDir());
+  // Guard: self-update works only on an unpacked app (resources/app). If the
+  // app is packed into app.asar, copying files in would fail — surface a clear
+  // message instead of a cryptic EEXIST.
+  const dest = appDir();
+  try {
+    const st = fs.statSync(dest);
+    if (!st.isDirectory()) throw new Error('not a directory');
+  } catch {
+    return { ok: false, reason: 'This build cannot self-update (it is packed). Please install the latest full build once; future updates will work automatically.' };
+  }
+  await copyTree(root, dest);
   try { await fsp.rm(tmp, { recursive: true, force: true }); } catch { /* ignore */ }
   if (onProgress) onProgress({ phase: 'done', pct: 100 });
   setTimeout(() => { try { app.relaunch(); } catch { /* ignore */ } app.exit(0); }, 700);

@@ -1,5 +1,5 @@
 {
-  "version": "0.1.1",
-  "notes": "Fix: the update prompt now only appears when an update is actually available. 'Check for updates' shows a brief 'you're up to date' message instead of a lingering banner.",
-  "zip": "tmphone-app-0.1.1.zip"
+  "version": "0.1.2",
+  "notes": "Fix: self-update now works (the app is no longer packed into app.asar, so updates can be applied in place). Also hardens the updater against packaging mismatches.",
+  "zip": "tmphone-app-0.1.2.zip"
 }
