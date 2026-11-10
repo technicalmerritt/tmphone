@@ -1,5 +1,5 @@
 {
-  "version": "0.1.0",
-  "notes": "First release of TM Phone.",
-  "zip": "tmphone-app-0.1.0.zip"
+  "version": "0.1.1",
+  "notes": "Fix: the update prompt now only appears when an update is actually available. 'Check for updates' shows a brief 'you're up to date' message instead of a lingering banner.",
+  "zip": "tmphone-app-0.1.1.zip"
 }
