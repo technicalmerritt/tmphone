@@ -22,6 +22,9 @@ let _dataDir = null;
 function getDataDir() {
   if (_dataDir) return _dataDir;
   const candidates = [];
+  // A single-file portable build extracts to temp, so prefer the real exe dir
+  // electron-builder exposes; otherwise the folder next to the executable.
+  try { if (process.env.PORTABLE_EXECUTABLE_DIR) candidates.push(path.join(process.env.PORTABLE_EXECUTABLE_DIR, 'TM-Phone-Data')); } catch { /* ignore */ }
   try { candidates.push(path.join(path.dirname(process.execPath), 'TM-Phone-Data')); } catch { /* ignore */ }
   try { candidates.push(app.getPath('userData')); } catch { /* ignore */ }
   for (const dir of candidates) {

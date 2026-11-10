@@ -21,7 +21,8 @@
     "files": [ "src/**/*", "package.json" ],
     "asarUnpack": [ "**/idevice/**" ],
     "win": {
-      "target": [ { "target": "portable", "arch": [ "x64" ] } ]
+      "signAndEditExecutable": false,
+      "target": [ { "target": "dir", "arch": [ "x64" ] } ]
     }
   }
 }
