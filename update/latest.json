@@ -1,5 +1,5 @@
 {
-  "version": "0.1.4",
-  "notes": "New: devices now read automatically the moment you connect one (no need to click Read). New: 'Back up device' makes a full iTunes-style backup to a folder you choose, with progress. Keep the device unlocked during a backup.",
-  "zip": "tmphone-app-0.1.4.zip"
+  "version": "0.1.5",
+  "notes": "New: 'Restore backup' puts a backup you made back onto the device (it reboots when done). The device must have Find My turned off. A confirmation prompt guards against accidental restores.",
+  "zip": "tmphone-app-0.1.5.zip"
 }

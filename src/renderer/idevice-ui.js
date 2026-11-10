@@ -88,6 +88,7 @@
   function enableButtons(on) {
     if (els.readBtn) els.readBtn.disabled = !on;
     if (els.backupBtn) els.backupBtn.disabled = !on || backingUp;
+    if (els.restoreBtn) els.restoreBtn.disabled = !on || backingUp;
     // report/syncro only make sense once we have a reading
     const haveRecord = !!current;
     if (els.reportBtn) els.reportBtn.disabled = !haveRecord;
@@ -282,6 +283,37 @@
     }
   }
 
+  async function restoreDevice() {
+    if (!window.idevice || !devices.length || backingUp) return;
+    const udid = devices[0];
+    if (!window.confirm('Restore a backup onto this device?\n\nThis overwrites the data currently on the phone with the backup you choose. The device must have Find My turned OFF. Continue?')) return;
+    backingUp = true;
+    if (els.restoreBtn) els.restoreBtn.disabled = true;
+    if (els.backupBtn) els.backupBtn.disabled = true;
+    show(els.backup, true);
+    if (els.backupBar) els.backupBar.style.width = '0%';
+    if (els.backupMsg) els.backupMsg.textContent = 'Starting restore… (keep the device connected and unlocked)';
+    try {
+      const r = await window.idevice.restore(udid);
+      backingUp = false;
+      if (els.restoreBtn) els.restoreBtn.disabled = false;
+      if (els.backupBtn) els.backupBtn.disabled = false;
+      if (r && r.canceled) { show(els.backup, false); return; }
+      if (r && r.ok) {
+        if (els.backupBar) els.backupBar.style.width = '100%';
+        if (els.backupMsg) els.backupMsg.textContent = 'Restore complete — the device will reboot.';
+        toast('Restore complete');
+      } else {
+        if (els.backupMsg) els.backupMsg.textContent = 'Restore failed: ' + ((r && r.reason) || 'unknown');
+      }
+    } catch (err) {
+      backingUp = false;
+      if (els.restoreBtn) els.restoreBtn.disabled = false;
+      if (els.backupBtn) els.backupBtn.disabled = false;
+      if (els.backupMsg) els.backupMsg.textContent = 'Restore failed: ' + ((err && err.message) || String(err));
+    }
+  }
+
   function buildReportText(r) {
     const L = [];
     L.push('APPLE DEVICE REPORT — ' + new Date().toLocaleString());
@@ -337,7 +369,7 @@
       busy: $('#idevBusy'), error: $('#idevError'), errDetail: $('#idevErrorDetail'),
       content: $('#idevContent'),
       readBtn: $('#idevReadBtn'), reportBtn: $('#idevReportBtn'), syncroBtn: $('#idevSyncroBtn'),
-      backupBtn: $('#idevBackupBtn'), backup: $('#idevBackup'), backupBar: $('#idevBackupBar'), backupMsg: $('#idevBackupMsg'),
+      backupBtn: $('#idevBackupBtn'), restoreBtn: $('#idevRestoreBtn'), backup: $('#idevBackup'), backupBar: $('#idevBackupBar'), backupMsg: $('#idevBackupMsg'),
       installBtn: $('#idevInstallBtn'), openDirBtn: $('#idevOpenDirBtn'), installMsg: $('#idevInstallMsg'),
     };
     if (!els.readBtn) return; // panel not present
@@ -347,6 +379,7 @@
 
     els.readBtn.addEventListener('click', readDevice);
     if (els.backupBtn) els.backupBtn.addEventListener('click', backupDevice);
+    if (els.restoreBtn) els.restoreBtn.addEventListener('click', restoreDevice);
     if (window.idevice && window.idevice.onBackupProgress) {
       window.idevice.onBackupProgress((m) => {
         if (!m) return;

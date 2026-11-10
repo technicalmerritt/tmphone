@@ -103,6 +103,21 @@ function registerIpc() {
       });
     } catch (err) { return { ok: false, reason: (err && err.message) || String(err) }; }
   });
+  ipcMain.handle('idevice:restore', async (_e, a) => {
+    try {
+      const udid = (a && a.udid) || '';
+      const base = path.join(getDataDir(), 'Backups');
+      const pick = await dialog.showOpenDialog(mainWindow, {
+        title: 'Choose the backup folder to restore from',
+        defaultPath: base,
+        properties: ['openDirectory'],
+      });
+      if (pick.canceled || !pick.filePaths || !pick.filePaths[0]) return { ok: false, canceled: true };
+      return await idevice.restoreDevice(udid, pick.filePaths[0], (m) => {
+        if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('idevice:backupProgress', m);
+      });
+    } catch (err) { return { ok: false, reason: (err && err.message) || String(err) }; }
+  });
   ipcMain.handle('idevice:revealPath', async (_e, a) => {
     try { await shell.openPath(String((a && a.path) || '')); return { ok: true }; }
     catch (err) { return { ok: false, reason: (err && err.message) || String(err) }; }

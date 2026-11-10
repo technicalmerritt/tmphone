@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('idevice', {
   install: () => ipcRenderer.invoke('idevice:install'),
   openToolsDir: () => ipcRenderer.invoke('idevice:openToolsDir'),
   backup: (udid) => ipcRenderer.invoke('idevice:backup', { udid }),
+  restore: (udid) => ipcRenderer.invoke('idevice:restore', { udid }),
   revealPath: (p) => ipcRenderer.invoke('idevice:revealPath', { path: p }),
   onBackupProgress: (cb) => ipcRenderer.on('idevice:backupProgress', (_e, m) => cb(m)),
   onDevices: (cb) => ipcRenderer.on('idevice:devices', (_e, list) => cb(list)),

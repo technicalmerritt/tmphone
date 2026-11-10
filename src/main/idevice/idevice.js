@@ -178,6 +178,45 @@ function backupDevice(udid, destDir, onProgress) {
   });
 }
 
+// Restore a backup back onto the device (companion to backupDevice). Streams
+// progress like backup. srcDir is the folder that was chosen for the backup
+// (the one containing the UDID subfolder).
+function restoreDevice(udid, srcDir, onProgress) {
+  return new Promise((resolve) => {
+    const dir = resolveToolDir();
+    if (!dir) return resolve({ ok: false, reason: 'Apple device tools are not installed.' });
+    const file = toolPath(dir, 'idevicebackup2');
+    if (IS_WIN && !fs.existsSync(file)) {
+      return resolve({ ok: false, reason: 'idevicebackup2 is not in your installed tools. Reinstall the tools from the Downloads tab.' });
+    }
+    const args = [];
+    if (udid) args.push('-u', udid);
+    // --system restores system files too; --settings keeps settings; --reboot
+    // reboots when done. Keep it to the safe default set.
+    args.push('restore', '--settings', '--reboot', srcDir);
+    let p;
+    try { p = spawn(IS_WIN ? file : 'idevicebackup2', args, { windowsHide: true }); }
+    catch (e) { return resolve({ ok: false, reason: (e && e.message) || String(e) }); }
+    let lastLine = '';
+    const onData = (buf) => {
+      for (const line of buf.toString().split(/\r?\n/)) {
+        const t = line.trim();
+        if (!t) continue;
+        lastLine = t;
+        const m = /(\d+)(?:\.\d+)?%/.exec(t);
+        if (onProgress) { try { onProgress({ pct: m ? parseInt(m[1], 10) : -1, line: t }); } catch { /* ignore */ } }
+      }
+    };
+    p.stdout.on('data', onData);
+    p.stderr.on('data', onData);
+    p.on('error', (e) => resolve({ ok: false, reason: (e && e.message) || String(e) }));
+    p.on('close', (code) => {
+      if (code === 0) resolve({ ok: true });
+      else resolve({ ok: false, reason: 'Restore did not finish (exit ' + code + '). ' + lastLine });
+    });
+  });
+}
+
 async function status() {
   const dir = resolveToolDir();
   if (!dir) {
@@ -207,7 +246,7 @@ async function status() {
 }
 
 module.exports = {
-  configure, status, listDevices, readDevice, crashReports, backupDevice,
+  configure, status, listDevices, readDevice, crashReports, backupDevice, restoreDevice,
   toolsPresent, resolveToolDir, verifyDir, installDir, bundledDir,
   ESSENTIAL, OPTIONAL,
 };
