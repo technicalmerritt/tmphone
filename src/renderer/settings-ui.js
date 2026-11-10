@@ -15,30 +15,36 @@
     if (s.hasToken && s.subdomain) loadAssetTypes(s.assetTypeId);
   }
 
-  async function save() {
+  async function save(silent) {
     const payload = { subdomain: els.sub.value };
     const tok = els.token.value.trim();
     if (tok) payload.token = tok;
     const sel = els.assetType;
     if (sel && sel.value) { payload.assetTypeId = isNaN(+sel.value) ? sel.value : +sel.value; payload.assetTypeName = sel.options[sel.selectedIndex].text; }
-    status('Saving…');
+    if (!silent) status('Saving…');
     try {
       await window.syncro.save(payload);
       els.token.value = '';
-      status('Saved.', 'ok');
+      if (!silent) status('Saved.', 'ok');
     } catch (e) { status('Save failed: ' + (e.message || e), 'bad'); }
   }
 
   async function test() {
-    status('Testing…');
+    status('Testing connection…');
     const payload = {};
     if (els.sub.value) payload.subdomain = els.sub.value;
     if (els.token.value.trim()) payload.token = els.token.value.trim();
     try {
       const r = await window.syncro.test(payload);
-      status((r && r.message) || 'Done', r && r.ok ? 'ok' : 'bad');
-      if (r && r.ok) { await save(); loadAssetTypes(); }
-    } catch (e) { status('Test failed: ' + (e.message || e), 'bad'); }
+      if (r && r.ok) {
+        // Save quietly, then report the TEST result (not "Saved").
+        await save(true);
+        loadAssetTypes();
+        status('✓ ' + ((r && r.message) || 'Connected successfully.'), 'ok');
+      } else {
+        status('✗ ' + ((r && r.message) || 'Connection failed.'), 'bad');
+      }
+    } catch (e) { status('✗ Test failed: ' + (e.message || e), 'bad'); }
   }
 
   async function loadAssetTypes(selectId) {

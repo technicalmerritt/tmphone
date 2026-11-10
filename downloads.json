@@ -16,6 +16,15 @@
       "url": "https://github.com/L1ghtmann/libimobiledevice/releases/download/suite-exe-21d57a9/libimobile-suite-latest_x86_64-mingw64.tar.xz",
       "sha256": "948d20c5f6460ab9d9ac6b5fdeba00ddde0c62f59882e1e1e577ed16b3ae8abe",
       "source": "https://github.com/L1ghtmann/libimobiledevice (suite-exe-21d57a9, mingw-w64)"
+    },
+    {
+      "id": "afcclient",
+      "name": "Photo access tool (afcclient)",
+      "desc": "Required for the Photos tab. A self-contained build of libimobiledevice's afcclient that reads the camera roll over USB. One-click: downloads, verifies, and installs into the tools folder.",
+      "kind": "tools",
+      "url": "https://raw.githubusercontent.com/technicalmerritt/tmphone/main/tools-bin/afcclient-win-x64.zip",
+      "sha256": "3edb64142a118fbfdcb65955b1183c7e089172990b4afe2f617cbbfe0e6acffe",
+      "source": "Built from libimobiledevice (ed0d66d) with mingw-w64, static"
     }
   ]
 }

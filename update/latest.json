@@ -1,5 +1,5 @@
 {
-  "version": "0.2.1",
-  "notes": "Syncro is now hooked up. New Settings tab: enter your Syncro subdomain + API token, test the connection, and pick a default asset type for phones. On the Device tab, 'Register in Syncro' now works: search the customer, and TM Phone creates (or updates) a phone asset pre-filled with model, serial, IMEI, UDID, iOS, battery health, storage and Activation Lock status.",
-  "zip": "tmphone-app-0.2.1.zip"
+  "version": "0.2.2",
+  "notes": "Photos now work: the Downloads tab has a new 'Photo access tool (afcclient)' — one click downloads and installs it, then the Photos tab can browse the camera roll. (This is a self-contained build I made of libimobiledevice's afcclient, since the standard Windows suite omits it.) Also fixed: Syncro 'Test connection' now shows the real result instead of just 'Saved'.",
+  "zip": "tmphone-app-0.2.2.zip"
 }
