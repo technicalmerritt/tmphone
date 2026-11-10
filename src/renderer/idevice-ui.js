@@ -74,6 +74,7 @@
       if (autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
       current = null;
       show(els.content, false); show(els.busy, false);
+      if (!wiping && els.wipe) { show(els.wipe, false); if (els.wipeToggle) els.wipeToggle.disabled = true; }
     }
   }
 
@@ -89,6 +90,7 @@
     if (els.readBtn) els.readBtn.disabled = !on;
     if (els.backupBtn) els.backupBtn.disabled = !on || backingUp;
     if (els.restoreBtn) els.restoreBtn.disabled = !on || backingUp;
+    if (els.wipeToggle) els.wipeToggle.disabled = !on;
     // report/syncro only make sense once we have a reading
     const haveRecord = !!current;
     if (els.reportBtn) els.reportBtn.disabled = !haveRecord;
@@ -314,6 +316,69 @@
     }
   }
 
+  // ---- Erase / flash (wipe) ----
+  let wipeIpsw = null;
+  let wiping = false;
+
+  function wipeGateOk() {
+    const ack = els.wipeAck && els.wipeAck.checked;
+    const typed = els.wipeConfirm && els.wipeConfirm.value.trim() === 'ERASE';
+    const fwOk = (els.fwLatest && els.fwLatest.checked) || (els.fwLocal && els.fwLocal.checked && wipeIpsw);
+    return ack && typed && fwOk && !wiping;
+  }
+  function refreshWipeGate() { if (els.wipeStart) els.wipeStart.disabled = !wipeGateOk(); }
+
+  async function openWipe() {
+    if (!devices.length) return;
+    show(els.wipe, true);
+    if (els.wipeToggle) els.wipeToggle.disabled = true;
+    // live Find My + tool check
+    if (els.wipeFindmy) { els.wipeFindmy.className = 'idev-flag idev-flag--warn'; els.wipeFindmy.textContent = 'Checking Find My / Activation Lock…'; }
+    try {
+      const s = await window.idevice.wipeStatus(devices[0]);
+      if (s && s.ok) {
+        if (!s.hasTool) {
+          els.wipeFindmy.className = 'idev-flag idev-flag--bad';
+          els.wipeFindmy.textContent = 'Flashing tool (idevicerestore) is not in your installed tools, so erase/flash is unavailable on this build.';
+          if (els.wipeStart) els.wipeStart.disabled = true;
+        } else if (s.findMy && s.findMy.known && s.findMy.enabled) {
+          els.wipeFindmy.className = 'idev-flag idev-flag--bad';
+          els.wipeFindmy.textContent = '⛔ Find My / Activation Lock is ON. You cannot safely wipe this device — the owner must sign out of Find My first. (Erase is blocked.)';
+        } else if (s.findMy && s.findMy.known && !s.findMy.enabled) {
+          els.wipeFindmy.className = 'idev-flag idev-flag--ok';
+          els.wipeFindmy.textContent = '✓ Find My appears to be OFF — safe to erase.';
+        } else {
+          els.wipeFindmy.className = 'idev-flag idev-flag--warn';
+          els.wipeFindmy.textContent = '⚠️ Couldn’t confirm Find My over USB. Check it manually on the device (Settings → [name] → Find My) before erasing.';
+        }
+      }
+    } catch { /* ignore */ }
+    refreshWipeGate();
+  }
+
+  function closeWipe() { show(els.wipe, false); if (els.wipeToggle) els.wipeToggle.disabled = !devices.length; }
+
+  async function startWipe() {
+    if (!wipeGateOk() || !devices.length) return;
+    if (!window.confirm('Last check: this ERASES everything on the device and cannot be undone. Proceed?')) return;
+    wiping = true; refreshWipeGate();
+    if (els.wipeCancel) els.wipeCancel.disabled = true;
+    show(els.wipeProg, true);
+    if (els.wipeBar) els.wipeBar.style.width = '0%';
+    if (els.wipeMsg) els.wipeMsg.textContent = 'Starting… do not disconnect the device.';
+    try {
+      const r = await window.idevice.wipe({ udid: devices[0], confirm: 'ERASE', ipsw: (els.fwLocal && els.fwLocal.checked) ? wipeIpsw : null });
+      wiping = false;
+      if (els.wipeCancel) els.wipeCancel.disabled = false;
+      refreshWipeGate();
+      if (r && r.ok) { if (els.wipeBar) els.wipeBar.style.width = '100%'; if (els.wipeMsg) els.wipeMsg.textContent = 'Done — the device has been erased and is restarting.'; toast('Erase complete'); }
+      else if (els.wipeMsg) els.wipeMsg.textContent = (r && r.reason) || 'Erase failed.';
+    } catch (err) {
+      wiping = false; if (els.wipeCancel) els.wipeCancel.disabled = false; refreshWipeGate();
+      if (els.wipeMsg) els.wipeMsg.textContent = 'Erase failed: ' + ((err && err.message) || String(err));
+    }
+  }
+
   function buildReportText(r) {
     const L = [];
     L.push('APPLE DEVICE REPORT — ' + new Date().toLocaleString());
@@ -371,8 +436,33 @@
       readBtn: $('#idevReadBtn'), reportBtn: $('#idevReportBtn'), syncroBtn: $('#idevSyncroBtn'),
       backupBtn: $('#idevBackupBtn'), restoreBtn: $('#idevRestoreBtn'), backup: $('#idevBackup'), backupBar: $('#idevBackupBar'), backupMsg: $('#idevBackupMsg'),
       installBtn: $('#idevInstallBtn'), openDirBtn: $('#idevOpenDirBtn'), installMsg: $('#idevInstallMsg'),
+      wipeToggle: $('#idevWipeToggle'), wipe: $('#idevWipe'), wipeFindmy: $('#idevWipeFindmy'),
+      fwLatest: $('#idevFwLatest'), fwLocal: $('#idevFwLocal'), fwPick: $('#idevFwPick'), fwPath: $('#idevFwPath'),
+      wipeAck: $('#idevWipeAck'), wipeConfirm: $('#idevWipeConfirm'), wipeStart: $('#idevWipeStart'), wipeCancel: $('#idevWipeCancel'),
+      wipeProg: $('#idevWipeProg'), wipeBar: $('#idevWipeBar'), wipeMsg: $('#idevWipeMsg'),
     };
     if (!els.readBtn) return; // panel not present
+
+    if (els.wipeToggle) els.wipeToggle.addEventListener('click', openWipe);
+    if (els.wipeCancel) els.wipeCancel.addEventListener('click', closeWipe);
+    if (els.wipeAck) els.wipeAck.addEventListener('change', refreshWipeGate);
+    if (els.wipeConfirm) els.wipeConfirm.addEventListener('input', refreshWipeGate);
+    if (els.fwLatest) els.fwLatest.addEventListener('change', refreshWipeGate);
+    if (els.fwLocal) els.fwLocal.addEventListener('change', refreshWipeGate);
+    if (els.wipeStart) els.wipeStart.addEventListener('click', startWipe);
+    if (els.fwPick) els.fwPick.addEventListener('click', async () => {
+      try {
+        const r = await window.idevice.pickIpsw();
+        if (r && r.ok) { wipeIpsw = r.path; if (els.fwPath) els.fwPath.textContent = r.path.split(/[\\/]/).pop(); if (els.fwLocal) els.fwLocal.checked = true; refreshWipeGate(); }
+      } catch { /* ignore */ }
+    });
+    if (window.idevice && window.idevice.onWipeProgress) {
+      window.idevice.onWipeProgress((m) => {
+        if (!m) return;
+        if (els.wipeBar && m.pct >= 0) els.wipeBar.style.width = m.pct + '%';
+        if (els.wipeMsg) els.wipeMsg.textContent = (m.pct >= 0 ? m.pct + '% — ' : '') + (m.line || 'Working…');
+      });
+    }
 
     if (els.installBtn) els.installBtn.addEventListener('click', installTools);
     if (els.openDirBtn) els.openDirBtn.addEventListener('click', () => { try { window.idevice.openToolsDir(); } catch { /* ignore */ } });

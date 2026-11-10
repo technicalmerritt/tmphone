@@ -118,6 +118,33 @@ function registerIpc() {
       });
     } catch (err) { return { ok: false, reason: (err && err.message) || String(err) }; }
   });
+  // Erase / flash (wipe). Guarded: reads Find My live and refuses if it can
+  // detect Activation Lock is ON, regardless of what the UI sent.
+  ipcMain.handle('idevice:wipeStatus', async (_e, a) => {
+    try {
+      const fm = await idevice.findMyStatus((a && a.udid) || '');
+      return { ok: true, findMy: fm, hasTool: idevice.hasRestoreTool() };
+    } catch (err) { return { ok: false, reason: (err && err.message) || String(err) }; }
+  });
+  ipcMain.handle('idevice:pickIpsw', async () => {
+    const r = await dialog.showOpenDialog(mainWindow, { title: 'Choose an IPSW firmware file', properties: ['openFile'], filters: [{ name: 'iOS firmware', extensions: ['ipsw'] }] });
+    if (r.canceled || !r.filePaths[0]) return { ok: false, canceled: true };
+    return { ok: true, path: r.filePaths[0] };
+  });
+  ipcMain.handle('idevice:wipe', async (_e, a) => {
+    try {
+      const udid = (a && a.udid) || '';
+      if (!a || a.confirm !== 'ERASE') return { ok: false, reason: 'Confirmation text did not match.' };
+      // Hard safety gate: if we can positively detect Find My is ON, refuse.
+      const fm = await idevice.findMyStatus(udid);
+      if (fm.known && fm.enabled) {
+        return { ok: false, reason: 'BLOCKED: Find My / Activation Lock is ON. The owner must sign out of Find My (Settings → [name] → Find My) first, or the device will be locked and unusable after the wipe.' };
+      }
+      return await idevice.wipeDevice(udid, { ipsw: (a && a.ipsw) || null }, (m) => {
+        if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('idevice:wipeProgress', m);
+      });
+    } catch (err) { return { ok: false, reason: (err && err.message) || String(err) }; }
+  });
   ipcMain.handle('idevice:revealPath', async (_e, a) => {
     try { await shell.openPath(String((a && a.path) || '')); return { ok: true }; }
     catch (err) { return { ok: false, reason: (err && err.message) || String(err) }; }

@@ -1,5 +1,5 @@
 {
-  "version": "0.1.5",
-  "notes": "New: 'Restore backup' puts a backup you made back onto the device (it reboots when done). The device must have Find My turned off. A confirmation prompt guards against accidental restores.",
-  "zip": "tmphone-app-0.1.5.zip"
+  "version": "0.1.6",
+  "notes": "New: Erase / Flash (wipe) — installs a fresh Apple-signed iOS and wipes the device, built on idevicerestore (the same restore protocol 3uTools uses). Heavily guarded: it reads Find My / Activation Lock and BLOCKS the wipe if it detects Activation Lock is on, requires a tick-box and typing ERASE, and lets you download the latest iOS or point to your own IPSW. Test on a non-customer device first. Requires idevicerestore in your tools suite.",
+  "zip": "tmphone-app-0.1.6.zip"
 }

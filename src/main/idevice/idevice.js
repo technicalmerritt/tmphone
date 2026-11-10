@@ -217,6 +217,69 @@ function restoreDevice(udid, srcDir, onProgress) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// ERASE / FLASH (wipe) via idevicerestore — the open-source implementation of
+// Apple's restore protocol (the same foundation 3uTools' flasher is built on).
+// HIGH RISK: a failed flash can leave a device in recovery/DFU, and wiping a
+// device with Find My ON creates an Activation-Locked brick. Callers MUST gate
+// on Activation Lock and explicit confirmation before calling this.
+// ---------------------------------------------------------------------------
+
+// Best-effort live Find My / Activation Lock read, used as a safety pre-check.
+async function findMyStatus(udid) {
+  const dir = resolveToolDir();
+  if (!dir) return { known: false, enabled: false };
+  const fmip = parse.parseKeyValue(await infoRaw(dir, udid, 'com.apple.fmip'));
+  const info = parse.parseKeyValue(await infoRaw(dir, udid, ''));
+  const a = parse.interpretActivation(info, fmip);
+  return { known: a.findMyKnown, enabled: a.findMyEnabled, activationState: a.activationState };
+}
+
+function hasRestoreTool() {
+  const dir = resolveToolDir();
+  if (!dir) return false;
+  try { return fs.existsSync(toolPath(dir, 'idevicerestore')); } catch { return false; }
+}
+
+// Erase-restore the device. opts: { ipsw: <path>|null (null = download latest
+// signed firmware), confirmedFindMyOff: bool }. Streams progress lines.
+function wipeDevice(udid, opts, onProgress) {
+  opts = opts || {};
+  return new Promise((resolve) => {
+    const dir = resolveToolDir();
+    if (!dir) return resolve({ ok: false, reason: 'Apple device tools are not installed.' });
+    const file = toolPath(dir, 'idevicerestore');
+    if (IS_WIN && !fs.existsSync(file)) {
+      return resolve({ ok: false, reason: 'idevicerestore is not in your installed tools suite, so flashing is unavailable. (Reinstall the tools from the Downloads tab — if it still isn\'t there, that build doesn\'t include it.)' });
+    }
+    // idevicerestore: -e erase, -l download latest signed firmware, -u <udid>.
+    const args = [];
+    if (udid) args.push('-u', udid);
+    args.push('-e');
+    if (opts.ipsw) args.push(opts.ipsw); else args.push('-l');
+    let p;
+    try { p = spawn(IS_WIN ? file : 'idevicerestore', args, { windowsHide: true }); }
+    catch (e) { return resolve({ ok: false, reason: (e && e.message) || String(e) }); }
+    let lastLine = '';
+    const onData = (buf) => {
+      for (const line of buf.toString().split(/\r?\n/)) {
+        const t = line.trim();
+        if (!t) continue;
+        lastLine = t;
+        const m = /(\d+)(?:\.\d+)?%/.exec(t);
+        if (onProgress) { try { onProgress({ pct: m ? parseInt(m[1], 10) : -1, line: t }); } catch { /* ignore */ } }
+      }
+    };
+    p.stdout.on('data', onData);
+    p.stderr.on('data', onData);
+    p.on('error', (e) => resolve({ ok: false, reason: (e && e.message) || String(e) }));
+    p.on('close', (code) => {
+      if (code === 0) resolve({ ok: true });
+      else resolve({ ok: false, reason: 'Flash did not complete (exit ' + code + '). ' + lastLine });
+    });
+  });
+}
+
 async function status() {
   const dir = resolveToolDir();
   if (!dir) {
@@ -247,6 +310,7 @@ async function status() {
 
 module.exports = {
   configure, status, listDevices, readDevice, crashReports, backupDevice, restoreDevice,
+  wipeDevice, findMyStatus, hasRestoreTool,
   toolsPresent, resolveToolDir, verifyDir, installDir, bundledDir,
   ESSENTIAL, OPTIONAL,
 };

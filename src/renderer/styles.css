@@ -135,3 +135,19 @@ body {
 .idev-backup { margin-top:12px; background:var(--bg-elev); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; }
 .idev-backup .idev-bar { margin:0 0 8px; }
 .idev-backup a { color:var(--accent); }
+.idev-danger-row { margin-top:16px; }
+.btn--danger { background:var(--danger); border-color:var(--danger); color:#fff; }
+.btn--danger:hover:not(:disabled) { background:#ff3b4e; border-color:#ff3b4e; }
+.btn--danger-ghost { background:transparent; border-color:rgba(255,92,108,0.5); color:var(--danger); }
+.btn--danger-ghost:hover:not(:disabled) { background:rgba(255,92,108,0.1); }
+.idev-wipe { margin-top:14px; background:rgba(255,92,108,0.06); border:1px solid rgba(255,92,108,0.35); border-radius:var(--radius); padding:18px; }
+.idev-wipe__h { margin:0 0 8px; color:var(--danger); font-size:17px; }
+.idev-wipe p { font-size:13px; }
+.idev-wipe__al { background:var(--bg-elev-2); border-radius:8px; padding:10px 12px; }
+.idev-wipe__fw { display:grid; gap:8px; margin:12px 0; }
+.idev-wipe__fw label { font-size:13px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.idev-wipe__ack { display:flex; align-items:center; gap:8px; font-size:13px; margin:10px 0; }
+.idev-wipe__type { display:flex; align-items:center; gap:8px; font-size:13px; }
+.idev-wipe__type input { background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:6px; padding:5px 8px; width:120px; }
+.idev-wipe__actions { display:flex; gap:10px; margin:14px 0 6px; }
+.idev-wipe__test { font-size:12px; }

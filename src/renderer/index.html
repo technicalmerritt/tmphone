@@ -54,6 +54,40 @@
       <p id="idevBackupMsg" class="muted"></p>
     </div>
 
+    <div class="idev-danger-row">
+      <button id="idevWipeToggle" class="btn btn--danger-ghost" type="button" disabled>Erase / Flash device…</button>
+    </div>
+
+    <!-- Erase / flash danger panel -->
+    <div id="idevWipe" class="idev-wipe" hidden>
+      <h2 class="idev-wipe__h">⚠️ Erase &amp; flash this device</h2>
+      <p>This <strong>permanently wipes everything</strong> on the device and installs a fresh, Apple-signed iOS. There is no undo. Make a backup first if the data matters.</p>
+      <div id="idevWipeFindmy" class="idev-flag idev-flag--warn">Checking Find My / Activation Lock…</div>
+      <p class="idev-wipe__al"><strong>Before you continue:</strong> Find My <em>must</em> be OFF (Settings → [name] → Find My → iPhone). If it's on, the device will be Activation-Locked after the wipe and demand the owner's Apple ID — an unusable brick.</p>
+
+      <div class="idev-wipe__fw">
+        <label><input type="radio" name="idevFw" id="idevFwLatest" value="latest" checked /> Download the latest iOS automatically (needs internet; several GB)</label>
+        <label><input type="radio" name="idevFw" id="idevFwLocal" value="local" /> Use an IPSW file I already have
+          <button id="idevFwPick" class="btn btn--ghost btn--sm" type="button">Choose IPSW…</button>
+          <span id="idevFwPath" class="muted"></span>
+        </label>
+      </div>
+
+      <label class="idev-wipe__ack"><input type="checkbox" id="idevWipeAck" /> I confirm Find My is turned off, and I'm authorised to erase this device.</label>
+      <label class="idev-wipe__type">Type <strong>ERASE</strong> to enable: <input type="text" id="idevWipeConfirm" autocomplete="off" placeholder="ERASE" /></label>
+
+      <div class="idev-wipe__actions">
+        <button id="idevWipeStart" class="btn btn--danger" type="button" disabled>Erase &amp; flash now</button>
+        <button id="idevWipeCancel" class="btn btn--ghost" type="button">Cancel</button>
+      </div>
+      <p class="muted idev-wipe__test">First time with a given model/iOS? Test on a device that isn't a customer's. Don't disconnect during the flash.</p>
+
+      <div id="idevWipeProg" class="idev-backup" hidden>
+        <div class="idev-bar"><div id="idevWipeBar" class="idev-bar__fill idev-bar__fill--bad" style="width:0%"></div></div>
+        <p id="idevWipeMsg" class="muted"></p>
+      </div>
+    </div>
+
     <div id="idevConn" class="idev-conn">
       <span id="idevConnDot" class="idev-dot idev-dot--off" aria-hidden="true"></span>
       <span id="idevConnText" class="muted">Checking for Apple device tools…</span>

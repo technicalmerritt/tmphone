@@ -11,8 +11,12 @@ contextBridge.exposeInMainWorld('idevice', {
   openToolsDir: () => ipcRenderer.invoke('idevice:openToolsDir'),
   backup: (udid) => ipcRenderer.invoke('idevice:backup', { udid }),
   restore: (udid) => ipcRenderer.invoke('idevice:restore', { udid }),
+  wipeStatus: (udid) => ipcRenderer.invoke('idevice:wipeStatus', { udid }),
+  pickIpsw: () => ipcRenderer.invoke('idevice:pickIpsw'),
+  wipe: (args) => ipcRenderer.invoke('idevice:wipe', args),
   revealPath: (p) => ipcRenderer.invoke('idevice:revealPath', { path: p }),
   onBackupProgress: (cb) => ipcRenderer.on('idevice:backupProgress', (_e, m) => cb(m)),
+  onWipeProgress: (cb) => ipcRenderer.on('idevice:wipeProgress', (_e, m) => cb(m)),
   onDevices: (cb) => ipcRenderer.on('idevice:devices', (_e, list) => cb(list)),
 });
 
