@@ -20,6 +20,14 @@ contextBridge.exposeInMainWorld('idevice', {
   onDevices: (cb) => ipcRenderer.on('idevice:devices', (_e, list) => cb(list)),
 });
 
+contextBridge.exposeInMainWorld('photos', {
+  status: (udid) => ipcRenderer.invoke('photos:status', { udid }),
+  folders: (udid) => ipcRenderer.invoke('photos:folders', { udid }),
+  list: (udid, folder) => ipcRenderer.invoke('photos:list', { udid, folder }),
+  thumb: (udid, folder, name) => ipcRenderer.invoke('photos:thumb', { udid, folder, name }),
+  export: (udid, folder, names) => ipcRenderer.invoke('photos:export', { udid, folder, names }),
+});
+
 contextBridge.exposeInMainWorld('downloads', {
   list: () => ipcRenderer.invoke('downloads:list'),
   install: (id) => ipcRenderer.invoke('downloads:install', { id }),

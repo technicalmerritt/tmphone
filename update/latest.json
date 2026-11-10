@@ -1,5 +1,5 @@
 {
-  "version": "0.1.6",
-  "notes": "New: Erase / Flash (wipe) — installs a fresh Apple-signed iOS and wipes the device, built on idevicerestore (the same restore protocol 3uTools uses). Heavily guarded: it reads Find My / Activation Lock and BLOCKS the wipe if it detects Activation Lock is on, requires a tick-box and typing ERASE, and lets you download the latest iOS or point to your own IPSW. Test on a non-customer device first. Requires idevicerestore in your tools suite.",
-  "zip": "tmphone-app-0.1.6.zip"
+  "version": "0.2.0",
+  "notes": "New Photos tab: browse the device's camera-roll folders, see thumbnails (iPhone HEIC photos are decoded for preview), select and export photos/videos to the PC. If you updated in-app rather than installing the fresh build, HEIC previews may show a placeholder until you run the latest full build (which bundles the photo decoder); folders, JPG/PNG previews and export work either way.",
+  "zip": "tmphone-app-0.2.0.zip"
 }

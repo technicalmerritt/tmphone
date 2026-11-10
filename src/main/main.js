@@ -145,6 +145,25 @@ function registerIpc() {
       });
     } catch (err) { return { ok: false, reason: (err && err.message) || String(err) }; }
   });
+  // ---- photos (camera roll browser) ----
+  ipcMain.handle('photos:status', async (_e, a) => {
+    try { return { ok: true, afc: idevice.afcPresent(), udid: (a && a.udid) || '' }; }
+    catch (err) { return { ok: false, reason: (err && err.message) || String(err) }; }
+  });
+  ipcMain.handle('photos:folders', async (_e, a) => { try { return await idevice.photoFolders((a && a.udid) || ''); } catch (err) { return { ok: false, reason: (err && err.message) || String(err) }; } });
+  ipcMain.handle('photos:list', async (_e, a) => { try { return await idevice.photoList((a && a.udid) || '', (a && a.folder) || ''); } catch (err) { return { ok: false, reason: (err && err.message) || String(err) }; } });
+  ipcMain.handle('photos:thumb', async (_e, a) => { try { return await idevice.photoThumb((a && a.udid) || '', (a && a.folder) || '', (a && a.name) || ''); } catch (err) { return { ok: false, reason: (err && err.message) || String(err) }; } });
+  ipcMain.handle('photos:export', async (_e, a) => {
+    try {
+      const base = path.join(getDataDir(), 'Exports');
+      await fsp.mkdir(base, { recursive: true });
+      const pick = await dialog.showOpenDialog(mainWindow, { title: 'Export photos to…', defaultPath: base, properties: ['openDirectory', 'createDirectory'] });
+      if (pick.canceled || !pick.filePaths[0]) return { ok: false, canceled: true };
+      const r = await idevice.photoExport((a && a.udid) || '', (a && a.folder) || '', (a && a.names) || [], pick.filePaths[0]);
+      r.dir = pick.filePaths[0];
+      return r;
+    } catch (err) { return { ok: false, reason: (err && err.message) || String(err) }; }
+  });
   ipcMain.handle('idevice:revealPath', async (_e, a) => {
     try { await shell.openPath(String((a && a.path) || '')); return { ok: true }; }
     catch (err) { return { ok: false, reason: (err && err.message) || String(err) }; }

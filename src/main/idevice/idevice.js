@@ -14,8 +14,18 @@
 
 const path = require('node:path');
 const fs = require('node:fs');
+const os = require('node:os');
+const fsp = require('node:fs/promises');
 const { execFile, spawn } = require('node:child_process');
 const parse = require('./idevice-parse');
+
+// Pure-JS HEIC decoder, lazily loaded so the app still runs if it's absent
+// (e.g. an install that self-updated the code but not node_modules).
+let _heic = null, _heicTried = false;
+function heicConvert() {
+  if (!_heicTried) { _heicTried = true; try { _heic = require('heic-convert'); } catch { _heic = null; } }
+  return _heic;
+}
 
 const IS_WIN = process.platform === 'win32';
 
@@ -280,6 +290,97 @@ function wipeDevice(udid, opts, onProgress) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// PHOTOS — browse the camera roll (DCIM) over AFC and pull/convert images.
+// DCIM holds folders like 100APPLE/101APPLE (iOS storage buckets); that's the
+// "folders" view 3uTools shows. Uses afcclient from the tools suite.
+// ---------------------------------------------------------------------------
+const IMG_EXT = ['jpg', 'jpeg', 'png', 'heic', 'heif', 'gif', 'tiff', 'webp'];
+const VID_EXT = ['mov', 'mp4', 'm4v', 'avi'];
+
+function afcPresent() {
+  const dir = resolveToolDir();
+  if (!dir) return false;
+  try { return fs.existsSync(toolPath(dir, 'afcclient')); } catch { return false; }
+}
+
+async function afcLs(udid, remotePath) {
+  const dir = resolveToolDir();
+  if (!dir) return { ok: false, reason: 'tools missing', entries: [] };
+  if (!afcPresent()) return { ok: false, reason: 'afcclient is not in your installed tools suite.', entries: [] };
+  const args = [];
+  if (udid) args.push('-u', udid);
+  args.push('ls', remotePath);
+  const r = await run(dir, 'afcclient', args, 20000);
+  if (!r.ok) return { ok: false, reason: r.stderr || r.stdout || 'listing failed', entries: [] };
+  const entries = r.stdout.split(/\r?\n/).map((s) => s.trim()).filter((s) => s && s !== '.' && s !== '..');
+  return { ok: true, entries };
+}
+
+// DCIM subfolders (100APPLE, 101APPLE, …).
+async function photoFolders(udid) {
+  const r = await afcLs(udid, '/DCIM');
+  if (!r.ok) return r;
+  // Entries that look like storage buckets or any folder (afcclient ls lists names only).
+  return { ok: true, folders: r.entries.filter((e) => !/\.[a-z0-9]+$/i.test(e)) };
+}
+
+function extOf(name) { const m = /\.([a-z0-9]+)$/i.exec(name); return m ? m[1].toLowerCase() : ''; }
+
+async function photoList(udid, folder) {
+  const r = await afcLs(udid, '/DCIM/' + folder);
+  if (!r.ok) return r;
+  const files = r.entries
+    .map((name) => ({ name, ext: extOf(name) }))
+    .filter((f) => IMG_EXT.includes(f.ext) || VID_EXT.includes(f.ext))
+    .map((f) => ({ name: f.name, type: VID_EXT.includes(f.ext) ? 'video' : 'image', ext: f.ext }));
+  return { ok: true, files };
+}
+
+async function afcGet(udid, remotePath, localPath) {
+  const dir = resolveToolDir();
+  const args = [];
+  if (udid) args.push('-u', udid);
+  args.push('get', remotePath, localPath);
+  return run(dir, 'afcclient', args, 120000);
+}
+
+// Pull one image and return a data URL thumbnail (HEIC is decoded to JPEG).
+async function photoThumb(udid, folder, name) {
+  const ext = extOf(name);
+  if (VID_EXT.includes(ext)) return { ok: true, video: true };
+  const tmp = path.join(os.tmpdir(), 'tmphone-th-' + Date.now() + '-' + Math.random().toString(36).slice(2) + '.' + ext);
+  try {
+    const r = await afcGet(udid, '/DCIM/' + folder + '/' + name, tmp);
+    if ((!r.ok) || !fs.existsSync(tmp)) return { ok: false, reason: (r && (r.stderr || r.stdout)) || 'pull failed' };
+    let buf = await fsp.readFile(tmp);
+    let mime = 'image/jpeg';
+    if (ext === 'heic' || ext === 'heif') {
+      const conv = heicConvert();
+      if (!conv) return { ok: false, noDecoder: true };
+      buf = await conv({ buffer: buf, format: 'JPEG', quality: 0.4 });
+    } else if (ext === 'png') mime = 'image/png';
+    else if (ext === 'gif') mime = 'image/gif';
+    else if (ext === 'webp') mime = 'image/webp';
+    return { ok: true, dataUrl: 'data:' + mime + ';base64,' + buf.toString('base64') };
+  } catch (e) {
+    return { ok: false, reason: (e && e.message) || String(e) };
+  } finally {
+    try { fs.unlinkSync(tmp); } catch { /* ignore */ }
+  }
+}
+
+// Export selected files (originals, unconverted) to a local folder.
+async function photoExport(udid, folder, names, destDir) {
+  await fsp.mkdir(destDir, { recursive: true });
+  let done = 0; const failed = [];
+  for (const name of names) {
+    const r = await afcGet(udid, '/DCIM/' + folder + '/' + name, path.join(destDir, name));
+    if (r.ok) done++; else failed.push(name);
+  }
+  return { ok: failed.length === 0, exported: done, failed };
+}
+
 async function status() {
   const dir = resolveToolDir();
   if (!dir) {
@@ -311,6 +412,7 @@ async function status() {
 module.exports = {
   configure, status, listDevices, readDevice, crashReports, backupDevice, restoreDevice,
   wipeDevice, findMyStatus, hasRestoreTool,
+  afcPresent, photoFolders, photoList, photoThumb, photoExport,
   toolsPresent, resolveToolDir, verifyDir, installDir, bundledDir,
   ESSENTIAL, OPTIONAL,
 };

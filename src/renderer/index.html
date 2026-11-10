@@ -17,6 +17,7 @@
     </div>
     <nav class="nav">
       <button class="nav__tab nav__tab--active" data-view="device" type="button">Device</button>
+      <button class="nav__tab" data-view="photos" type="button">Photos</button>
       <button class="nav__tab" data-view="downloads" type="button">Downloads</button>
     </nav>
     <div class="top__right">
@@ -120,6 +121,24 @@
     <div id="idevContent" class="idev-content" hidden></div>
   </main>
 
+  <!-- ============ PHOTOS VIEW ============ -->
+  <main class="wrap view" id="view-photos" hidden>
+    <div class="info-top">
+      <div class="info-top__text">
+        <h2 class="view__h">Photos</h2>
+        <p class="muted">Browse the device's camera roll folders and export photos/videos to the PC. Read-only — nothing on the device is changed.</p>
+      </div>
+      <div class="info-top__actions">
+        <button id="phBack" class="btn btn--ghost" type="button" hidden>← Folders</button>
+        <button id="phExport" class="btn btn--primary" type="button" hidden disabled>Export selected</button>
+        <button id="phRefresh" class="btn btn--ghost" type="button">Refresh</button>
+      </div>
+    </div>
+    <p id="phStatus" class="muted"></p>
+    <div id="phFolders" class="ph-grid"></div>
+    <div id="phPhotos" class="ph-photos" hidden></div>
+  </main>
+
   <!-- ============ DOWNLOADS VIEW ============ -->
   <main class="wrap view" id="view-downloads" hidden>
     <div class="info-top">
@@ -136,6 +155,7 @@
   </main>
 
   <script src="idevice-ui.js"></script>
+  <script src="photos-ui.js"></script>
   <script src="downloads-ui.js"></script>
   <script src="update-ui.js"></script>
   <script src="nav.js"></script>

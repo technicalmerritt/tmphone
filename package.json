@@ -1,6 +1,6 @@
 {
   "name": "tm-phone",
-  "version": "0.1.6",
+  "version": "0.2.0",
   "description": "TM Phone — standalone iPhone/iPad diagnostics for the repair bench by Technical Merritt Computer Services.",
   "license": "UNLICENSED",
   "private": true,
@@ -36,5 +36,8 @@
         }
       ]
     }
+  },
+  "dependencies": {
+    "heic-convert": "^2.1.0"
   }
 }
