@@ -12,6 +12,9 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
+/* The HTML `hidden` attribute must always win, even over display:flex rules
+   below (otherwise hidden spinners/banners stay visible). */
+[hidden] { display: none !important; }
 body {
   background: var(--bg);
   color: var(--text);
