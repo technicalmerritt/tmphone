@@ -386,37 +386,75 @@
     const s = await window.syncro.get();
     if (!s || !s.subdomain || !s.hasToken) { toast('Set up Syncro in the Settings tab first.'); return; }
     if (!s.assetTypeId) { toast('Choose a default asset type in Settings first.'); return; }
-    if (els.syncroInfo) els.syncroInfo.textContent = 'Registering: ' + (current.model || 'device') + (current.serial ? ' · ' + current.serial : '') + '. Find the customer:';
+    if (els.syncroInfo) els.syncroInfo.textContent = (current.model || 'device') + (current.serial ? ' · ' + current.serial : '') + ' — find the customer, then register it as an asset or attach it to a ticket:';
     if (els.syncroResults) els.syncroResults.innerHTML = '';
     if (els.syncroMsg) els.syncroMsg.textContent = '';
+    syncroCustomer = null;
+    show(els.syncroChosen, false);
     show(els.syncro, true);
     if (els.syncroQuery) els.syncroQuery.focus();
   }
+
+  let syncroCustomer = null; // { id, label }
 
   async function syncroSearch() {
     const q = els.syncroQuery ? els.syncroQuery.value.trim() : '';
     if (!q) return;
     els.syncroMsg.textContent = 'Searching…';
     els.syncroResults.innerHTML = '';
+    show(els.syncroChosen, false);
     try {
       const r = await window.syncro.searchCustomers(q);
       if (!r || !r.ok) { els.syncroMsg.textContent = (r && r.message) || 'Search failed.'; return; }
       if (!r.customers.length) { els.syncroMsg.textContent = 'No customers matched.'; return; }
       els.syncroMsg.textContent = '';
       els.syncroResults.innerHTML = r.customers.map((c) => `<button class="idev-cust" data-id="${c.id}" type="button"><strong>${esc(c.name)}</strong>${c.email ? ' <span class="muted">' + esc(c.email) + '</span>' : ''}</button>`).join('');
-      els.syncroResults.querySelectorAll('.idev-cust').forEach((b) => b.addEventListener('click', () => registerTo(b.dataset.id, b.textContent)));
+      els.syncroResults.querySelectorAll('.idev-cust').forEach((b) => b.addEventListener('click', () => chooseCustomer(b.dataset.id, b.querySelector('strong').textContent)));
     } catch (err) { els.syncroMsg.textContent = 'Search failed: ' + ((err && err.message) || String(err)); }
   }
 
-  async function registerTo(customerId, label) {
-    if (!current) return;
-    els.syncroMsg.textContent = 'Registering to ' + label + '…';
+  function chooseCustomer(id, name) {
+    syncroCustomer = { id: isNaN(+id) ? id : +id, label: name };
     els.syncroResults.innerHTML = '';
+    if (els.syncroCustName) els.syncroCustName.textContent = name;
+    if (els.syncroTickets) els.syncroTickets.innerHTML = '';
+    els.syncroMsg.textContent = '';
+    show(els.syncroChosen, true);
+  }
+
+  async function registerAsAsset() {
+    if (!current || !syncroCustomer) return;
+    els.syncroMsg.textContent = 'Registering to ' + syncroCustomer.label + '…';
     try {
-      const r = await window.syncro.register({ customerId: isNaN(+customerId) ? customerId : +customerId, record: current });
+      const r = await window.syncro.register({ customerId: syncroCustomer.id, record: current });
       if (r && r.ok) { els.syncroMsg.textContent = r.message + ' (' + r.action + ')'; toast('Registered in Syncro'); setTimeout(() => show(els.syncro, false), 1800); }
       else els.syncroMsg.textContent = (r && r.message) || 'Registration failed.';
     } catch (err) { els.syncroMsg.textContent = 'Registration failed: ' + ((err && err.message) || String(err)); }
+  }
+
+  async function loadTickets() {
+    if (!syncroCustomer) return;
+    els.syncroMsg.textContent = 'Loading open tickets…';
+    els.syncroTickets.innerHTML = '';
+    try {
+      const r = await window.syncro.openTickets(syncroCustomer.id);
+      if (!r || !r.ok) { els.syncroMsg.textContent = (r && r.message) || 'Could not load tickets.'; return; }
+      if (!r.tickets.length) { els.syncroMsg.textContent = 'No open tickets for ' + syncroCustomer.label + '.'; return; }
+      els.syncroMsg.textContent = 'Pick a ticket to attach this device check to:';
+      els.syncroTickets.innerHTML = r.tickets.map((t) => `<button class="idev-cust" data-id="${t.id}" type="button"><strong>#${esc(t.number)}</strong> ${esc(t.subject)} <span class="muted">· ${esc(t.status)}</span></button>`).join('');
+      els.syncroTickets.querySelectorAll('.idev-cust').forEach((b) => b.addEventListener('click', () => attachTo(b.dataset.id, b.querySelector('strong').textContent)));
+    } catch (err) { els.syncroMsg.textContent = 'Could not load tickets: ' + ((err && err.message) || String(err)); }
+  }
+
+  async function attachTo(ticketId, label) {
+    if (!current) return;
+    els.syncroTickets.innerHTML = '';
+    els.syncroMsg.textContent = 'Attaching to ' + label + '…';
+    try {
+      const r = await window.syncro.attachTicket({ ticketId: isNaN(+ticketId) ? ticketId : +ticketId, record: current });
+      if (r && r.ok) { els.syncroMsg.textContent = r.message; toast('Attached to ticket'); setTimeout(() => show(els.syncro, false), 1800); }
+      else els.syncroMsg.textContent = (r && r.message) || 'Attach failed.';
+    } catch (err) { els.syncroMsg.textContent = 'Attach failed: ' + ((err && err.message) || String(err)); }
   }
 
   function buildReportText(r) {
@@ -482,6 +520,8 @@
       wipeProg: $('#idevWipeProg'), wipeBar: $('#idevWipeBar'), wipeMsg: $('#idevWipeMsg'),
       syncro: $('#idevSyncro'), syncroInfo: $('#idevSyncroInfo'), syncroQuery: $('#idevSyncroQuery'),
       syncroFind: $('#idevSyncroFind'), syncroResults: $('#idevSyncroResults'), syncroMsg: $('#idevSyncroMsg'), syncroClose: $('#idevSyncroClose'),
+      syncroChosen: $('#idevSyncroChosen'), syncroCustName: $('#idevSyncroCustName'), syncroChangeCust: $('#idevSyncroChangeCust'),
+      syncroAsAsset: $('#idevSyncroAsAsset'), syncroAsTicket: $('#idevSyncroAsTicket'), syncroTickets: $('#idevSyncroTickets'),
     };
     if (!els.readBtn) return; // panel not present
 
@@ -524,6 +564,9 @@
     if (els.syncroClose) els.syncroClose.addEventListener('click', () => show(els.syncro, false));
     if (els.syncroFind) els.syncroFind.addEventListener('click', syncroSearch);
     if (els.syncroQuery) els.syncroQuery.addEventListener('keydown', (e) => { if (e.key === 'Enter') syncroSearch(); });
+    if (els.syncroAsAsset) els.syncroAsAsset.addEventListener('click', registerAsAsset);
+    if (els.syncroAsTicket) els.syncroAsTicket.addEventListener('click', loadTickets);
+    if (els.syncroChangeCust) els.syncroChangeCust.addEventListener('click', () => { show(els.syncroChosen, false); els.syncroQuery.value = ''; els.syncroQuery.focus(); els.syncroMsg.textContent = ''; });
 
     refreshStatus(); // starts the connect-watcher itself once tools are confirmed
   }

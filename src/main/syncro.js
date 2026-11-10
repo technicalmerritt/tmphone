@@ -80,6 +80,47 @@ async function searchCustomers({ subdomain, token, query }) {
   }
 }
 
+// List a customer's live/open tickets — everything NOT resolved (covers
+// "Resolved" and "No Fix Resolved"), i.e. what's on the active view.
+async function listOpenTickets({ subdomain, token, customerId }) {
+  const base = normalizeBase(subdomain);
+  if (!base || !token) return { ok: false, message: 'Syncro is not configured.' };
+  if (!customerId) return { ok: false, message: 'Pick a customer first.' };
+  try {
+    const res = await api(base, token, `/tickets?customer_id=${encodeURIComponent(customerId)}&per_page=100`);
+    if (res.status === 401 || res.status === 403) return { ok: false, message: 'Token rejected — needs Tickets permission.' };
+    if (res.status !== 200) return { ok: false, message: `Syncro returned HTTP ${res.status}.` };
+    let j = {};
+    try { j = await res.json(); } catch { /* ignore */ }
+    const raw = (j && (j.tickets || j.data)) || [];
+    const open = raw
+      .filter((t) => !/resolved/i.test(String(t.status || '')))
+      .map((t) => ({ id: t.id, number: t.number, subject: t.subject || '(no subject)', status: t.status || '' }));
+    return { ok: true, tickets: open };
+  } catch (e) {
+    return { ok: false, message: 'Could not reach Syncro: ' + e.message };
+  }
+}
+
+// Post the device readout as a comment on a ticket.
+async function attachToTicket({ subdomain, token, ticketId, subject, body }) {
+  const base = normalizeBase(subdomain);
+  if (!base || !token) return { ok: false, message: 'Syncro is not configured.' };
+  const id = String(ticketId || '').trim();
+  try {
+    const res = await api(base, token, `/tickets/${id}/comment`, {
+      method: 'POST',
+      body: { subject: subject || 'TM Phone — device check', body: body || '', hidden: true, do_not_email: true },
+    });
+    if (res.status >= 200 && res.status < 300) return { ok: true, message: `Attached to ticket #${id}.` };
+    if (res.status === 404) return { ok: false, message: `Ticket ${id} not found.` };
+    if (res.status === 401 || res.status === 403) return { ok: false, message: `Rejected (HTTP ${res.status}). The token needs ticket comment permission.` };
+    return { ok: false, message: `Syncro returned HTTP ${res.status}.` };
+  } catch (e) {
+    return { ok: false, message: 'Could not reach Syncro: ' + e.message };
+  }
+}
+
 // Find an existing asset by serial (to update instead of duplicating).
 async function findAssetBySerial({ base, token, serial }) {
   if (!serial) return null;
@@ -127,4 +168,4 @@ async function registerAsset({ subdomain, token, customerId, assetTypeId, name, 
   }
 }
 
-module.exports = { normalizeBase, testConnection, listAssetTypes, searchCustomers, registerAsset };
+module.exports = { normalizeBase, testConnection, listAssetTypes, searchCustomers, registerAsset, listOpenTickets, attachToTicket };

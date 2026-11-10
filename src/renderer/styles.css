@@ -181,3 +181,7 @@ body {
 .idev-cust { text-align:left; background:var(--bg-elev-2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; color:var(--text); cursor:pointer; font-size:13px; }
 .idev-cust:hover { border-color:var(--accent); }
 .idev-syncro__actions { margin-top:8px; }
+.idev-syncro__chosen { margin:10px 0; padding:12px; background:var(--bg-elev-2); border-radius:8px; }
+.idev-syncro__chosen p { margin:0 0 8px; font-size:13px; }
+.idev-syncro__choice { display:flex; gap:10px; margin-bottom:8px; flex-wrap:wrap; }
+.idev-linkbtn { background:none; border:none; color:var(--accent); cursor:pointer; font-size:12px; text-decoration:underline; padding:0; }

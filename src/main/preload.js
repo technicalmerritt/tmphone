@@ -49,6 +49,8 @@ contextBridge.exposeInMainWorld('syncro', {
   assetTypes: () => ipcRenderer.invoke('syncro:assetTypes'),
   searchCustomers: (query) => ipcRenderer.invoke('syncro:searchCustomers', { query }),
   register: (args) => ipcRenderer.invoke('syncro:register', args),
+  openTickets: (customerId) => ipcRenderer.invoke('syncro:openTickets', { customerId }),
+  attachTicket: (args) => ipcRenderer.invoke('syncro:attachTicket', args),
 });
 
 contextBridge.exposeInMainWorld('appInfo', {

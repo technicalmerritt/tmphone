@@ -128,6 +128,17 @@
         <button id="idevSyncroFind" class="btn btn--ghost" type="button">Search</button>
       </div>
       <div id="idevSyncroResults" class="idev-syncro__results"></div>
+
+      <!-- after a customer is chosen -->
+      <div id="idevSyncroChosen" class="idev-syncro__chosen" hidden>
+        <p>Customer: <strong id="idevSyncroCustName"></strong> <button id="idevSyncroChangeCust" class="idev-linkbtn" type="button">change</button></p>
+        <div class="idev-syncro__choice">
+          <button id="idevSyncroAsAsset" class="btn btn--primary" type="button">Register as asset</button>
+          <button id="idevSyncroAsTicket" class="btn btn--ghost" type="button">Attach to a ticket</button>
+        </div>
+        <div id="idevSyncroTickets" class="idev-syncro__results"></div>
+      </div>
+
       <p id="idevSyncroMsg" class="muted"></p>
       <div class="idev-syncro__actions">
         <button id="idevSyncroClose" class="btn btn--ghost" type="button">Close</button>

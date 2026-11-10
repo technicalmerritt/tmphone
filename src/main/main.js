@@ -278,6 +278,25 @@ function registerIpc() {
     });
   });
 
+  ipcMain.handle('syncro:openTickets', async (_e, a) => {
+    const c = await config.getSyncro();
+    return syncro.listOpenTickets({ subdomain: c.subdomain, token: c.token, customerId: (a && a.customerId) });
+  });
+  ipcMain.handle('syncro:attachTicket', async (_e, a) => {
+    const c = await config.getSyncro();
+    const rec = (a && a.record) || {};
+    const b = rec.battery || {}; const st = rec.storage || {}; const act = rec.activation || {};
+    const L = [];
+    L.push('<b>TM Phone — device check</b> (' + new Date().toLocaleString() + ')');
+    L.push('Model: ' + (rec.model || '') + (rec.iosVersion ? ' · iOS ' + rec.iosVersion : ''));
+    if (rec.serial) L.push('Serial: ' + rec.serial);
+    if (rec.imei) L.push('IMEI: ' + rec.imei);
+    if (b.healthPct != null) L.push('Battery health: ' + b.healthPct + '% (' + b.verdictLabel + ')' + (b.cycleCount != null ? ', ' + b.cycleCount + ' cycles' : ''));
+    if (st.totalGB) L.push('Storage: ' + st.freeGB + ' GB free of ' + st.totalGB + ' GB');
+    L.push('Activation Lock: ' + (act.findMyKnown ? (act.findMyEnabled ? 'ON' : 'OFF') : 'unknown'));
+    return syncro.attachToTicket({ subdomain: c.subdomain, token: c.token, ticketId: (a && a.ticketId), subject: 'TM Phone — ' + (rec.model || 'device') + ' check', body: L.join('<br>') });
+  });
+
   ipcMain.handle('app:version', async () => app.getVersion());
 }
 

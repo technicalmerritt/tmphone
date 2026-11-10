@@ -1,5 +1,5 @@
 {
-  "version": "0.2.3",
-  "notes": "Photos: added 'Open in File Explorer' — reliably opens your trusted iPhone/iPad in Windows (This PC > device > DCIM) so you can browse and copy photos off today. The in-app thumbnail reader (afcclient) is still experimental; if it can't open the camera roll, the app now points you to the File Explorer route.",
-  "zip": "tmphone-app-0.2.3.zip"
+  "version": "0.2.4",
+  "notes": "Syncro: 'Register in Syncro' now offers two workflows after you pick a customer — Register as asset (contract onboarding), or Attach to a ticket. Attach pulls the customer's live/open tickets (everything not Resolved / No Fix Resolved) so you can pick one and post the device check as a note on it (for booking in a job).",
+  "zip": "tmphone-app-0.2.4.zip"
 }
