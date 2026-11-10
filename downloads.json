@@ -1,0 +1,21 @@
+{
+  "updated": "2026-11-10",
+  "dependencies": [
+    {
+      "id": "apple-driver",
+      "name": "Apple Mobile Device driver",
+      "desc": "Required. Provides the Windows USB service that lets the PC talk to iPhones/iPads. Install the free 'Apple Devices' app from the Microsoft Store (or iTunes). Opens in your browser/Store — run the installer, then come back.",
+      "kind": "link",
+      "url": "https://apps.microsoft.com/detail/9np83lwlpz9k"
+    },
+    {
+      "id": "libimobiledevice",
+      "name": "libimobiledevice tools",
+      "desc": "Required. The open-source command-line tools that read the device. One-click download: TM Phone fetches, checksum-verifies, and installs them into its own tools folder (portable — travels with the app).",
+      "kind": "tools",
+      "url": "https://github.com/L1ghtmann/libimobiledevice/releases/download/suite-exe-21d57a9/libimobile-suite-latest_x86_64-mingw64.tar.xz",
+      "sha256": "948d20c5f6460ab9d9ac6b5fdeba00ddde0c62f59882e1e1e577ed16b3ae8abe",
+      "source": "https://github.com/L1ghtmann/libimobiledevice (suite-exe-21d57a9, mingw-w64)"
+    }
+  ]
+}

@@ -1,21 +1,23 @@
 'use strict';
 
 // TM Phone — standalone iOS/iPadOS diagnostics for the repair bench.
-// A lean Electron app: read a connected iPhone/iPad over USB (via the
-// open-source libimobiledevice tools) and show identity, battery health,
-// storage, software and Activation-Lock status. No licence gate — internal tool.
+// Reads a connected iPhone/iPad over USB (via the open-source libimobiledevice
+// tools), remote-updates itself, and offers a built-in Downloads page so all
+// dependencies are one click away. No licence gate — internal tool.
 
 const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const fsp = require('node:fs/promises');
-const { execFile } = require('node:child_process');
 const idevice = require('./idevice/idevice');
+const updater = require('./update');
+const http = require('./httpget');
+const { extract } = require('./extract');
 
 let mainWindow = null;
 
 // ---- Portable data dir: prefer a folder next to the executable (travels on a
-// USB stick), fall back to per-user appdata. Mirrors TM Toolset. ----
+// USB stick), fall back to per-user appdata. ----
 let _dataDir = null;
 function getDataDir() {
   if (_dataDir) return _dataDir;
@@ -26,11 +28,9 @@ function getDataDir() {
     try {
       fs.mkdirSync(dir, { recursive: true });
       const probe = path.join(dir, '.writetest');
-      fs.writeFileSync(probe, 'x');
-      fs.unlinkSync(probe);
-      _dataDir = dir;
-      return dir;
-    } catch { /* not writable, try next */ }
+      fs.writeFileSync(probe, 'x'); fs.unlinkSync(probe);
+      _dataDir = dir; return dir;
+    } catch { /* try next */ }
   }
   _dataDir = app.getPath('userData');
   return _dataDir;
@@ -38,101 +38,122 @@ function getDataDir() {
 
 idevice.configure({ dataDir: getDataDir() });
 
-// Extract a zip with no bundled tooling: Windows ships PowerShell Expand-Archive
-// (and tar). On non-Windows dev, fall back to the system `unzip`.
-function extractZip(zipPath, destDir) {
-  return new Promise((resolve, reject) => {
-    if (process.platform === 'win32') {
-      const ps = 'Expand-Archive -LiteralPath ' + JSON.stringify(zipPath) + ' -DestinationPath ' + JSON.stringify(destDir) + ' -Force';
-      execFile('powershell', ['-NoProfile', '-NonInteractive', '-Command', ps], { windowsHide: true }, (err) => err ? reject(err) : resolve());
-    } else {
-      execFile('unzip', ['-o', zipPath, '-d', destDir], (err) => err ? reject(err) : resolve());
+function sendUpdateProgress(m) { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('update:progress', m); }
+
+// Collect every .exe/.dll under a dir (handles nested folders) and copy into the
+// portable tools folder.
+async function installToolsFrom(srcDir) {
+  const found = [];
+  const walk = async (d) => {
+    for (const ent of await fsp.readdir(d, { withFileTypes: true })) {
+      const p = path.join(d, ent.name);
+      if (ent.isDirectory()) await walk(p);
+      else if (/\.(exe|dll)$/i.test(ent.name)) found.push(p);
     }
-  });
+  };
+  await walk(srcDir);
+  if (!found.length) return { ok: false, reason: 'No .exe/.dll files were found in that archive.' };
+  const dest = idevice.installDir();
+  await fsp.mkdir(dest, { recursive: true });
+  for (const f of found) await fsp.copyFile(f, path.join(dest, path.basename(f)));
+  const verify = idevice.verifyDir(dest);
+  return { ok: verify.ok, installed: found.length, dest, missing: verify.missing };
+}
+
+async function loadManifest() {
+  // Live manifest from the repo first, so URLs can be fixed without a rebuild.
+  const rawUrl = 'https://raw.githubusercontent.com/' + updater.REPO + '/' + updater.BRANCH + '/downloads.json?t=' + Date.now();
+  try { return await http.getJson(rawUrl); }
+  catch {
+    try { return JSON.parse(await fsp.readFile(path.join(__dirname, '..', '..', 'downloads.json'), 'utf8')); }
+    catch { return { dependencies: [] }; }
+  }
 }
 
 function registerIpc() {
+  // ---- device reading ----
   ipcMain.handle('idevice:status', async () => {
-    try { return await idevice.status(); }
-    catch (err) { return { toolsPresent: false, message: (err && err.message) || String(err), devices: [] }; }
+    try { return await idevice.status(); } catch (err) { return { toolsPresent: false, message: (err && err.message) || String(err), devices: [] }; }
   });
-  ipcMain.handle('idevice:read', async (_evt, args) => {
-    try { return await idevice.readDevice((args && args.udid) || ''); }
+  ipcMain.handle('idevice:read', async (_e, a) => {
+    try { return await idevice.readDevice((a && a.udid) || ''); } catch (err) { return { ok: false, reason: (err && err.message) || String(err) }; }
+  });
+  ipcMain.handle('idevice:crash', async (_e, a) => {
+    try { const out = path.join(app.getPath('temp'), 'tmphone-crash-' + Date.now()); await fsp.mkdir(out, { recursive: true }); return await idevice.crashReports((a && a.udid) || '', out); }
     catch (err) { return { ok: false, reason: (err && err.message) || String(err) }; }
-  });
-  ipcMain.handle('idevice:crash', async (_evt, args) => {
-    try {
-      const out = path.join(app.getPath('temp'), 'tmphone-crash-' + Date.now());
-      await fsp.mkdir(out, { recursive: true });
-      return await idevice.crashReports((args && args.udid) || '', out);
-    } catch (err) { return { ok: false, reason: (err && err.message) || String(err) }; }
-  });
-  ipcMain.handle('idevice:install', async () => {
-    try {
-      const pick = await dialog.showOpenDialog(mainWindow, {
-        title: 'Select the libimobiledevice tools (.zip)',
-        properties: ['openFile'],
-        filters: [{ name: 'Zip archive', extensions: ['zip'] }, { name: 'All files', extensions: ['*'] }],
-      });
-      if (pick.canceled || !pick.filePaths || !pick.filePaths[0]) return { ok: false, canceled: true };
-      const tmp = path.join(app.getPath('temp'), 'tmphone-idev-' + Date.now());
-      await fsp.mkdir(tmp, { recursive: true });
-      await extractZip(pick.filePaths[0], tmp);
-      const found = [];
-      const walk = async (d) => {
-        for (const ent of await fsp.readdir(d, { withFileTypes: true })) {
-          const p = path.join(d, ent.name);
-          if (ent.isDirectory()) await walk(p);
-          else if (/\.(exe|dll)$/i.test(ent.name)) found.push(p);
-        }
-      };
-      await walk(tmp);
-      if (!found.length) { try { await fsp.rm(tmp, { recursive: true, force: true }); } catch {} return { ok: false, reason: 'No .exe/.dll files were found in that archive.' }; }
-      const dest = idevice.installDir();
-      await fsp.mkdir(dest, { recursive: true });
-      for (const f of found) await fsp.copyFile(f, path.join(dest, path.basename(f)));
-      try { await fsp.rm(tmp, { recursive: true, force: true }); } catch {}
-      const verify = idevice.verifyDir(dest);
-      return { ok: verify.ok, installed: found.length, dest, missing: verify.missing };
-    } catch (err) {
-      return { ok: false, reason: (err && err.message) || String(err) };
-    }
   });
   ipcMain.handle('idevice:openToolsDir', async () => {
     try { const d = idevice.installDir(); await fsp.mkdir(d, { recursive: true }); await shell.openPath(d); return { ok: true, dir: d }; }
     catch (err) { return { ok: false, reason: (err && err.message) || String(err) }; }
   });
+  // Install tools from a .zip the tech picked manually (fallback to the Downloads page).
+  ipcMain.handle('idevice:install', async () => {
+    try {
+      const pick = await dialog.showOpenDialog(mainWindow, {
+        title: 'Select the libimobiledevice tools archive',
+        properties: ['openFile'],
+        filters: [{ name: 'Archives', extensions: ['zip', 'xz', 'gz', 'tar'] }, { name: 'All files', extensions: ['*'] }],
+      });
+      if (pick.canceled || !pick.filePaths || !pick.filePaths[0]) return { ok: false, canceled: true };
+      const tmp = path.join(app.getPath('temp'), 'tmphone-idev-' + Date.now());
+      await fsp.mkdir(tmp, { recursive: true });
+      await extract(pick.filePaths[0], tmp);
+      const r = await installToolsFrom(tmp);
+      try { await fsp.rm(tmp, { recursive: true, force: true }); } catch {}
+      return r;
+    } catch (err) { return { ok: false, reason: (err && err.message) || String(err) }; }
+  });
 
   let _timer = null; let _last = '';
-  ipcMain.handle('idevice:watch', async (_evt, args) => {
-    const on = !!(args && args.on);
+  ipcMain.handle('idevice:watch', async (_e, a) => {
+    const on = !!(a && a.on);
     if (_timer) { clearInterval(_timer); _timer = null; }
     if (!on) return { ok: true, watching: false };
     const tick = async () => {
-      try {
-        const list = await idevice.listDevices();
-        const sig = list.join(',');
-        if (sig !== _last) { _last = sig; if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('idevice:devices', list); }
-      } catch { /* ignore */ }
+      try { const list = await idevice.listDevices(); const sig = list.join(','); if (sig !== _last) { _last = sig; if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('idevice:devices', list); } } catch { /* ignore */ }
     };
     _timer = setInterval(tick, 2500); tick();
     return { ok: true, watching: true };
   });
+
+  // ---- downloads page ----
+  ipcMain.handle('downloads:list', async () => { try { return await loadManifest(); } catch (err) { return { dependencies: [], error: (err && err.message) || String(err) }; } });
+  ipcMain.handle('downloads:openLink', async (_e, a) => { try { await shell.openExternal(String((a && a.url) || '')); return { ok: true }; } catch (err) { return { ok: false, reason: (err && err.message) || String(err) }; } });
+  ipcMain.handle('downloads:install', async (_e, a) => {
+    try {
+      const man = await loadManifest();
+      const dep = (man.dependencies || []).find((d) => d.id === (a && a.id));
+      if (!dep) return { ok: false, reason: 'Unknown download.' };
+      if (dep.kind === 'link') { await shell.openExternal(dep.url); return { ok: true, opened: true }; }
+      // kind === 'tools': download -> verify -> extract -> install
+      const tmp = path.join(app.getPath('temp'), 'tmphone-dl-' + Date.now());
+      await fsp.mkdir(tmp, { recursive: true });
+      const name = dep.url.split('/').pop().split('?')[0] || 'tools.archive';
+      const archive = path.join(tmp, name);
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('downloads:progress', { id: dep.id, phase: 'download', pct: 0 });
+      await http.download(dep.url, archive, (pct) => { if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('downloads:progress', { id: dep.id, phase: 'download', pct }); }, dep.sha256);
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('downloads:progress', { id: dep.id, phase: 'install', pct: -1 });
+      const exDir = path.join(tmp, 'x'); await fsp.mkdir(exDir, { recursive: true });
+      await extract(archive, exDir);
+      const r = await installToolsFrom(exDir);
+      try { await fsp.rm(tmp, { recursive: true, force: true }); } catch {}
+      if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('downloads:progress', { id: dep.id, phase: 'done', pct: 100 });
+      return r;
+    } catch (err) { return { ok: false, reason: (err && err.message) || String(err) }; }
+  });
+
+  // ---- self-update ----
+  ipcMain.handle('update:check', async () => { try { return await updater.checkForUpdate(); } catch (err) { return { ok: false, reason: (err && err.message) || String(err) }; } });
+  ipcMain.handle('update:apply', async () => { try { return await updater.applyUpdate(sendUpdateProgress); } catch (err) { return { ok: false, reason: (err && err.message) || String(err) }; } });
 
   ipcMain.handle('app:version', async () => app.getVersion());
 }
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1040, height: 760, minWidth: 820, minHeight: 600,
-    backgroundColor: '#12151c',
-    title: 'TM Phone',
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: false,
-    },
+    width: 1040, height: 780, minWidth: 820, minHeight: 600,
+    backgroundColor: '#12151c', title: 'TM Phone',
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: false },
   });
   mainWindow.removeMenu();
   mainWindow.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));

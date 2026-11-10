@@ -102,3 +102,30 @@ body {
 .idev-finding__h { display:flex; align-items:center; gap:8px; }
 .idev-finding__sev { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; padding:2px 7px; border-radius:999px; background:var(--bg-elev); color:var(--muted); }
 .idev-finding--bad .idev-finding__sev { color:var(--danger); } .idev-finding--warn .idev-finding__sev { color:#f3b23c; } .idev-finding--ok .idev-finding__sev { color:#3ec07a; }
+
+/* ===== nav + header right ===== */
+.nav { display:flex; gap:6px; }
+.nav__tab { appearance:none; background:transparent; border:none; color:var(--muted); font-size:14px; font-weight:600; padding:8px 14px; border-radius:8px; cursor:pointer; }
+.nav__tab:hover { color:var(--text); background:var(--bg-elev-2); }
+.nav__tab--active { color:#fff; background:var(--accent); }
+.top__right { display:flex; align-items:center; gap:12px; }
+.btn--sm { padding:6px 12px; font-size:12px; }
+.view__h { margin:0 0 4px; }
+
+/* ===== update banner ===== */
+.upd-banner { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:11px 24px; background:rgba(255,102,0,0.12); border-bottom:1px solid rgba(255,102,0,0.3); font-size:13px; }
+.upd-banner__actions { display:flex; gap:8px; flex-shrink:0; }
+.upd-progress { padding:10px 24px; background:var(--bg-elev); border-bottom:1px solid var(--border); font-size:13px; color:var(--muted); }
+
+/* ===== downloads cards ===== */
+.dl-list { display:grid; gap:12px; margin-top:8px; }
+.dl-card { display:flex; align-items:center; justify-content:space-between; gap:18px; background:var(--bg-elev); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; }
+.dl-card__body { flex:1; }
+.dl-card__body h3 { margin:0 0 4px; font-size:15px; }
+.dl-card__body p { margin:0; font-size:13px; }
+.dl-src { font-size:11px; margin-top:4px !important; opacity:0.8; }
+.dl-status { font-size:12px; margin-top:8px; min-height:1em; }
+.dl-status.ok { color:#3ec07a; }
+.dl-status.bad { color:var(--danger); }
+.dl-card__action { flex-shrink:0; }
+.dl-foot { margin-top:16px; font-size:12px; }
