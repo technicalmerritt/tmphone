@@ -1,5 +1,5 @@
 {
-  "version": "0.2.2",
-  "notes": "Photos now work: the Downloads tab has a new 'Photo access tool (afcclient)' — one click downloads and installs it, then the Photos tab can browse the camera roll. (This is a self-contained build I made of libimobiledevice's afcclient, since the standard Windows suite omits it.) Also fixed: Syncro 'Test connection' now shows the real result instead of just 'Saved'.",
-  "zip": "tmphone-app-0.2.2.zip"
+  "version": "0.2.3",
+  "notes": "Photos: added 'Open in File Explorer' — reliably opens your trusted iPhone/iPad in Windows (This PC > device > DCIM) so you can browse and copy photos off today. The in-app thumbnail reader (afcclient) is still experimental; if it can't open the camera roll, the app now points you to the File Explorer route.",
+  "zip": "tmphone-app-0.2.3.zip"
 }

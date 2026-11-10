@@ -26,6 +26,7 @@ contextBridge.exposeInMainWorld('photos', {
   list: (udid, folder) => ipcRenderer.invoke('photos:list', { udid, folder }),
   thumb: (udid, folder, name) => ipcRenderer.invoke('photos:thumb', { udid, folder, name }),
   export: (udid, folder, names) => ipcRenderer.invoke('photos:export', { udid, folder, names }),
+  openExplorer: () => ipcRenderer.invoke('photos:openExplorer'),
 });
 
 contextBridge.exposeInMainWorld('downloads', {

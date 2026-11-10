@@ -153,6 +153,14 @@ function registerIpc() {
     try { return { ok: true, afc: idevice.afcPresent(), udid: (a && a.udid) || '' }; }
     catch (err) { return { ok: false, reason: (err && err.message) || String(err) }; }
   });
+  ipcMain.handle('photos:openExplorer', async () => {
+    try {
+      // Opens "This PC", where a trusted iPhone/iPad appears as a device with
+      // Internal Storage > DCIM — reliable, no extra tools needed.
+      require('node:child_process').exec('explorer.exe shell:MyComputerFolder');
+      return { ok: true };
+    } catch (err) { return { ok: false, reason: (err && err.message) || String(err) }; }
+  });
   ipcMain.handle('photos:folders', async (_e, a) => { try { return await idevice.photoFolders((a && a.udid) || ''); } catch (err) { return { ok: false, reason: (err && err.message) || String(err) }; } });
   ipcMain.handle('photos:list', async (_e, a) => { try { return await idevice.photoList((a && a.udid) || '', (a && a.folder) || ''); } catch (err) { return { ok: false, reason: (err && err.message) || String(err) }; } });
   ipcMain.handle('photos:thumb', async (_e, a) => { try { return await idevice.photoThumb((a && a.udid) || '', (a && a.folder) || '', (a && a.name) || ''); } catch (err) { return { ok: false, reason: (err && err.message) || String(err) }; } });

@@ -28,7 +28,11 @@
     if (!st || !st.afc) { els.status.textContent = 'Photo access needs the “afcclient” tool, which isn’t in your installed tools suite. (Reinstall the tools from the Downloads tab; if it’s still missing, that build doesn’t include it.)'; return; }
     els.status.textContent = 'Loading folders…';
     const r = await window.photos.folders(udid);
-    if (!r || !r.ok) { els.status.textContent = 'Could not read photos: ' + ((r && r.reason) || 'unknown') + '. Make sure the device is unlocked and trusted.'; return; }
+    if (!r || !r.ok) {
+      els.status.innerHTML = 'The in-app reader couldn’t open the camera roll (' + esc((r && r.reason) || 'unknown').slice(0, 120) + '). '
+        + 'Use <strong>Open in File Explorer</strong> above — your device shows up under “This PC” with its photos in the DCIM folder.';
+      return;
+    }
     if (!r.folders.length) { els.status.textContent = 'No camera-roll folders found (DCIM is empty).'; return; }
     els.status.textContent = r.folders.length + ' folder(s). Click one to view its photos.';
     els.folders.innerHTML = r.folders.map((f) => `<button class="ph-folder" data-folder="${esc(f)}" type="button"><span class="ph-folder__ico">📁</span><span>${esc(f)}</span></button>`).join('');
@@ -98,9 +102,10 @@
   }
 
   function init() {
-    els = { status: $('#phStatus'), folders: $('#phFolders'), photos: $('#phPhotos'), back: $('#phBack'), exportBtn: $('#phExport'), refresh: $('#phRefresh') };
+    els = { status: $('#phStatus'), folders: $('#phFolders'), photos: $('#phPhotos'), back: $('#phBack'), exportBtn: $('#phExport'), refresh: $('#phRefresh'), explorer: $('#phExplorer') };
     if (!els.folders) return;
     els.refresh.addEventListener('click', loadFolders);
+    if (els.explorer) els.explorer.addEventListener('click', () => { try { window.photos.openExplorer(); } catch { /* ignore */ } });
     els.back.addEventListener('click', () => { show(els.photos, false); show(els.folders, true); show(els.back, false); show(els.exportBtn, false); selected.clear(); els.status.textContent = 'Click a folder to view its photos.'; });
     els.exportBtn.addEventListener('click', exportSelected);
     // Load when the Photos tab is first opened.
