@@ -102,6 +102,36 @@ async function listOpenTickets({ subdomain, token, customerId }) {
   }
 }
 
+// List ALL live/open tickets (the active-jobs view) — not tied to a customer,
+// so a tech with the device in hand just picks their booked-in job. Excludes
+// anything resolved. Includes the customer name so each job is identifiable.
+async function listActiveTickets({ subdomain, token }) {
+  const base = normalizeBase(subdomain);
+  if (!base || !token) return { ok: false, message: 'Syncro is not configured.' };
+  try {
+    const res = await api(base, token, `/tickets?per_page=100`);
+    if (res.status === 401 || res.status === 403) return { ok: false, message: 'Token rejected — needs Tickets permission.' };
+    if (res.status !== 200) return { ok: false, message: `Syncro returned HTTP ${res.status}.` };
+    let j = {};
+    try { j = await res.json(); } catch { /* ignore */ }
+    const raw = (j && (j.tickets || j.data)) || [];
+    const tickets = raw
+      .filter((t) => !/resolved/i.test(String(t.status || '')))
+      .map((t) => ({
+        id: t.id,
+        number: t.number,
+        subject: t.subject || '(no subject)',
+        status: t.status || '',
+        customer: t.customer_business_then_name || t.customer_full_name ||
+          (t.customer && (t.customer.business_name || [t.customer.firstname, t.customer.lastname].filter(Boolean).join(' ').trim())) ||
+          (t.customer_id ? 'Customer ' + t.customer_id : ''),
+      }));
+    return { ok: true, tickets };
+  } catch (e) {
+    return { ok: false, message: 'Could not reach Syncro: ' + e.message };
+  }
+}
+
 // Post the device readout as a comment on a ticket.
 async function attachToTicket({ subdomain, token, ticketId, subject, body }) {
   const base = normalizeBase(subdomain);
@@ -168,4 +198,4 @@ async function registerAsset({ subdomain, token, customerId, assetTypeId, name, 
   }
 }
 
-module.exports = { normalizeBase, testConnection, listAssetTypes, searchCustomers, registerAsset, listOpenTickets, attachToTicket };
+module.exports = { normalizeBase, testConnection, listAssetTypes, searchCustomers, registerAsset, listOpenTickets, listActiveTickets, attachToTicket };

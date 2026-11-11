@@ -282,6 +282,10 @@ function registerIpc() {
     const c = await config.getSyncro();
     return syncro.listOpenTickets({ subdomain: c.subdomain, token: c.token, customerId: (a && a.customerId) });
   });
+  ipcMain.handle('syncro:activeTickets', async () => {
+    const c = await config.getSyncro();
+    return syncro.listActiveTickets({ subdomain: c.subdomain, token: c.token });
+  });
   ipcMain.handle('syncro:attachTicket', async (_e, a) => {
     const c = await config.getSyncro();
     const rec = (a && a.record) || {};

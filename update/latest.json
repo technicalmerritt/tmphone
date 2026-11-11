@@ -1,5 +1,5 @@
 {
-  "version": "0.2.4",
-  "notes": "Syncro: 'Register in Syncro' now offers two workflows after you pick a customer — Register as asset (contract onboarding), or Attach to a ticket. Attach pulls the customer's live/open tickets (everything not Resolved / No Fix Resolved) so you can pick one and post the device check as a note on it (for booking in a job).",
-  "zip": "tmphone-app-0.2.4.zip"
+  "version": "0.2.5",
+  "notes": "Syncro 'Send to Syncro' now leads with your live jobs — no typing. Choose 'Attach to a live job' and it lists ALL your current (unresolved) tickets with the customer name; pick the one in your hand and the device check posts to it. An optional filter box narrows a long list. 'Register as asset' (with customer search) is still there for onboarding a new device.",
+  "zip": "tmphone-app-0.2.5.zip"
 }

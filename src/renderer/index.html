@@ -48,7 +48,7 @@
         <button id="idevBackupBtn" class="btn btn--ghost" type="button" disabled>Back up device</button>
         <button id="idevRestoreBtn" class="btn btn--ghost" type="button" disabled>Restore backup</button>
         <button id="idevReportBtn" class="btn btn--ghost" type="button" disabled>Export report</button>
-        <button id="idevSyncroBtn" class="btn btn--ghost" type="button" disabled>Register in Syncro</button>
+        <button id="idevSyncroBtn" class="btn btn--ghost" type="button" disabled>Send to Syncro</button>
       </div>
     </div>
     <div id="idevBackup" class="idev-backup" hidden>
@@ -121,26 +121,36 @@
 
     <!-- Register in Syncro panel -->
     <div id="idevSyncro" class="idev-syncro" hidden>
-      <h2>Register in Syncro</h2>
-      <p class="muted" id="idevSyncroInfo">Find the customer this device belongs to, then register it as an asset.</p>
-      <div class="idev-syncro__search">
-        <input id="idevSyncroQuery" type="text" placeholder="Search customer name, business or email…" autocomplete="off" />
-        <button id="idevSyncroFind" class="btn btn--ghost" type="button">Search</button>
-      </div>
-      <div id="idevSyncroResults" class="idev-syncro__results"></div>
+      <h2>Send to Syncro</h2>
+      <p class="muted" id="idevSyncroInfo"></p>
 
-      <!-- after a customer is chosen -->
-      <div id="idevSyncroChosen" class="idev-syncro__chosen" hidden>
-        <p>Customer: <strong id="idevSyncroCustName"></strong> <button id="idevSyncroChangeCust" class="idev-linkbtn" type="button">change</button></p>
-        <div class="idev-syncro__choice">
-          <button id="idevSyncroAsAsset" class="btn btn--primary" type="button">Register as asset</button>
-          <button id="idevSyncroAsTicket" class="btn btn--ghost" type="button">Attach to a ticket</button>
+      <!-- top-level choice -->
+      <div id="idevSyncroMode" class="idev-syncro__choice">
+        <button id="idevSyncroModeTicket" class="btn btn--primary" type="button">Attach to a live job (ticket)</button>
+        <button id="idevSyncroModeAsset" class="btn btn--ghost" type="button">Register as asset to a customer</button>
+      </div>
+
+      <!-- TICKET MODE: live jobs, pick one, no typing -->
+      <div id="idevSyncroTicketMode" hidden>
+        <div class="idev-syncro__search">
+          <input id="idevSyncroTicketFilter" type="text" placeholder="Filter the list (optional) — name, #number or subject" autocomplete="off" />
+          <button id="idevSyncroTicketRefresh" class="btn btn--ghost" type="button">Refresh</button>
         </div>
         <div id="idevSyncroTickets" class="idev-syncro__results"></div>
       </div>
 
+      <!-- ASSET MODE: search a customer -->
+      <div id="idevSyncroAssetMode" hidden>
+        <div class="idev-syncro__search">
+          <input id="idevSyncroQuery" type="text" placeholder="Search customer name, business or email…" autocomplete="off" />
+          <button id="idevSyncroFind" class="btn btn--ghost" type="button">Search</button>
+        </div>
+        <div id="idevSyncroResults" class="idev-syncro__results"></div>
+      </div>
+
       <p id="idevSyncroMsg" class="muted"></p>
       <div class="idev-syncro__actions">
+        <button id="idevSyncroBack" class="btn btn--ghost" type="button" hidden>← Back</button>
         <button id="idevSyncroClose" class="btn btn--ghost" type="button">Close</button>
       </div>
     </div>

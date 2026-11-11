@@ -185,3 +185,4 @@ body {
 .idev-syncro__chosen p { margin:0 0 8px; font-size:13px; }
 .idev-syncro__choice { display:flex; gap:10px; margin-bottom:8px; flex-wrap:wrap; }
 .idev-linkbtn { background:none; border:none; color:var(--accent); cursor:pointer; font-size:12px; text-decoration:underline; padding:0; }
+.idev-syncro__results { max-height:300px; overflow-y:auto; }

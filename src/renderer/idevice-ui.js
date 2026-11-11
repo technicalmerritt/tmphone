@@ -379,82 +379,92 @@
     }
   }
 
-  // ---- Syncro registration ----
+  // ---- Send to Syncro (two modes: attach to a live ticket, or register as asset) ----
+  let allTickets = []; // cached active tickets for client-side filtering
+
+  function syncroShowMode(mode) {
+    show(els.syncroModeChoice, mode === 'choice');
+    show(els.syncroTicketMode, mode === 'ticket');
+    show(els.syncroAssetMode, mode === 'asset');
+    show(els.syncroBack, mode !== 'choice');
+    els.syncroMsg.textContent = '';
+  }
+
   async function openSyncro() {
     if (!current) { toast('Read a device first.'); return; }
     if (!window.syncro) return;
     const s = await window.syncro.get();
     if (!s || !s.subdomain || !s.hasToken) { toast('Set up Syncro in the Settings tab first.'); return; }
-    if (!s.assetTypeId) { toast('Choose a default asset type in Settings first.'); return; }
-    if (els.syncroInfo) els.syncroInfo.textContent = (current.model || 'device') + (current.serial ? ' · ' + current.serial : '') + ' — find the customer, then register it as an asset or attach it to a ticket:';
+    if (els.syncroInfo) els.syncroInfo.textContent = (current.model || 'device') + (current.serial ? ' · ' + current.serial : '') + ' — attach it to a live job, or register it as a customer asset:';
     if (els.syncroResults) els.syncroResults.innerHTML = '';
-    if (els.syncroMsg) els.syncroMsg.textContent = '';
-    syncroCustomer = null;
-    show(els.syncroChosen, false);
-    show(els.syncro, true);
-    if (els.syncroQuery) els.syncroQuery.focus();
-  }
-
-  let syncroCustomer = null; // { id, label }
-
-  async function syncroSearch() {
-    const q = els.syncroQuery ? els.syncroQuery.value.trim() : '';
-    if (!q) return;
-    els.syncroMsg.textContent = 'Searching…';
-    els.syncroResults.innerHTML = '';
-    show(els.syncroChosen, false);
-    try {
-      const r = await window.syncro.searchCustomers(q);
-      if (!r || !r.ok) { els.syncroMsg.textContent = (r && r.message) || 'Search failed.'; return; }
-      if (!r.customers.length) { els.syncroMsg.textContent = 'No customers matched.'; return; }
-      els.syncroMsg.textContent = '';
-      els.syncroResults.innerHTML = r.customers.map((c) => `<button class="idev-cust" data-id="${c.id}" type="button"><strong>${esc(c.name)}</strong>${c.email ? ' <span class="muted">' + esc(c.email) + '</span>' : ''}</button>`).join('');
-      els.syncroResults.querySelectorAll('.idev-cust').forEach((b) => b.addEventListener('click', () => chooseCustomer(b.dataset.id, b.querySelector('strong').textContent)));
-    } catch (err) { els.syncroMsg.textContent = 'Search failed: ' + ((err && err.message) || String(err)); }
-  }
-
-  function chooseCustomer(id, name) {
-    syncroCustomer = { id: isNaN(+id) ? id : +id, label: name };
-    els.syncroResults.innerHTML = '';
-    if (els.syncroCustName) els.syncroCustName.textContent = name;
     if (els.syncroTickets) els.syncroTickets.innerHTML = '';
-    els.syncroMsg.textContent = '';
-    show(els.syncroChosen, true);
+    if (els.syncroTicketFilter) els.syncroTicketFilter.value = '';
+    allTickets = [];
+    syncroShowMode('choice');
+    show(els.syncro, true);
   }
 
-  async function registerAsAsset() {
-    if (!current || !syncroCustomer) return;
-    els.syncroMsg.textContent = 'Registering to ' + syncroCustomer.label + '…';
-    try {
-      const r = await window.syncro.register({ customerId: syncroCustomer.id, record: current });
-      if (r && r.ok) { els.syncroMsg.textContent = r.message + ' (' + r.action + ')'; toast('Registered in Syncro'); setTimeout(() => show(els.syncro, false), 1800); }
-      else els.syncroMsg.textContent = (r && r.message) || 'Registration failed.';
-    } catch (err) { els.syncroMsg.textContent = 'Registration failed: ' + ((err && err.message) || String(err)); }
+  // ----- ticket mode (live jobs, no typing) -----
+  function renderTickets(list) {
+    if (!list.length) { els.syncroTickets.innerHTML = '<p class="muted">No live jobs match.</p>'; return; }
+    els.syncroTickets.innerHTML = list.map((t) => `<button class="idev-cust" data-id="${t.id}" type="button"><strong>#${esc(t.number)}</strong> ${esc(t.customer || '')} <span class="muted">· ${esc(t.subject)} · ${esc(t.status)}</span></button>`).join('');
+    els.syncroTickets.querySelectorAll('.idev-cust').forEach((b) => b.addEventListener('click', () => attachTo(b.dataset.id, '#' + b.querySelector('strong').textContent.replace('#', ''))));
   }
-
-  async function loadTickets() {
-    if (!syncroCustomer) return;
-    els.syncroMsg.textContent = 'Loading open tickets…';
+  function filterTickets() {
+    const q = (els.syncroTicketFilter.value || '').trim().toLowerCase();
+    if (!q) { renderTickets(allTickets); return; }
+    renderTickets(allTickets.filter((t) => (('#' + t.number + ' ' + t.customer + ' ' + t.subject + ' ' + t.status).toLowerCase()).includes(q)));
+  }
+  async function loadActiveTickets() {
+    syncroShowMode('ticket');
+    els.syncroMsg.textContent = 'Loading your live jobs…';
     els.syncroTickets.innerHTML = '';
     try {
-      const r = await window.syncro.openTickets(syncroCustomer.id);
+      const r = await window.syncro.activeTickets();
       if (!r || !r.ok) { els.syncroMsg.textContent = (r && r.message) || 'Could not load tickets.'; return; }
-      if (!r.tickets.length) { els.syncroMsg.textContent = 'No open tickets for ' + syncroCustomer.label + '.'; return; }
-      els.syncroMsg.textContent = 'Pick a ticket to attach this device check to:';
-      els.syncroTickets.innerHTML = r.tickets.map((t) => `<button class="idev-cust" data-id="${t.id}" type="button"><strong>#${esc(t.number)}</strong> ${esc(t.subject)} <span class="muted">· ${esc(t.status)}</span></button>`).join('');
-      els.syncroTickets.querySelectorAll('.idev-cust').forEach((b) => b.addEventListener('click', () => attachTo(b.dataset.id, b.querySelector('strong').textContent)));
+      allTickets = r.tickets || [];
+      if (!allTickets.length) { els.syncroMsg.textContent = 'No live (unresolved) tickets found.'; return; }
+      els.syncroMsg.textContent = allTickets.length + ' live job(s) — pick one to attach this device check to.';
+      renderTickets(allTickets);
     } catch (err) { els.syncroMsg.textContent = 'Could not load tickets: ' + ((err && err.message) || String(err)); }
   }
-
   async function attachTo(ticketId, label) {
     if (!current) return;
     els.syncroTickets.innerHTML = '';
-    els.syncroMsg.textContent = 'Attaching to ' + label + '…';
+    els.syncroMsg.textContent = 'Attaching to ticket ' + label + '…';
     try {
       const r = await window.syncro.attachTicket({ ticketId: isNaN(+ticketId) ? ticketId : +ticketId, record: current });
       if (r && r.ok) { els.syncroMsg.textContent = r.message; toast('Attached to ticket'); setTimeout(() => show(els.syncro, false), 1800); }
       else els.syncroMsg.textContent = (r && r.message) || 'Attach failed.';
     } catch (err) { els.syncroMsg.textContent = 'Attach failed: ' + ((err && err.message) || String(err)); }
+  }
+
+  // ----- asset mode (customer search) -----
+  async function syncroSearch() {
+    const q = els.syncroQuery ? els.syncroQuery.value.trim() : '';
+    if (!q) return;
+    els.syncroMsg.textContent = 'Searching…';
+    els.syncroResults.innerHTML = '';
+    try {
+      const r = await window.syncro.searchCustomers(q);
+      if (!r || !r.ok) { els.syncroMsg.textContent = (r && r.message) || 'Search failed.'; return; }
+      if (!r.customers.length) { els.syncroMsg.textContent = 'No customers matched.'; return; }
+      els.syncroMsg.textContent = 'Pick the customer to register this device to:';
+      els.syncroResults.innerHTML = r.customers.map((c) => `<button class="idev-cust" data-id="${c.id}" type="button"><strong>${esc(c.name)}</strong>${c.email ? ' <span class="muted">' + esc(c.email) + '</span>' : ''}</button>`).join('');
+      els.syncroResults.querySelectorAll('.idev-cust').forEach((b) => b.addEventListener('click', () => registerAsset(b.dataset.id, b.querySelector('strong').textContent)));
+    } catch (err) { els.syncroMsg.textContent = 'Search failed: ' + ((err && err.message) || String(err)); }
+  }
+  async function registerAsset(customerId, label) {
+    if (!current) return;
+    const s = await window.syncro.get();
+    if (!s.assetTypeId) { els.syncroMsg.textContent = 'Choose a default asset type in Settings first.'; return; }
+    els.syncroResults.innerHTML = '';
+    els.syncroMsg.textContent = 'Registering to ' + label + '…';
+    try {
+      const r = await window.syncro.register({ customerId: isNaN(+customerId) ? customerId : +customerId, record: current });
+      if (r && r.ok) { els.syncroMsg.textContent = r.message + ' (' + r.action + ')'; toast('Registered in Syncro'); setTimeout(() => show(els.syncro, false), 1800); }
+      else els.syncroMsg.textContent = (r && r.message) || 'Registration failed.';
+    } catch (err) { els.syncroMsg.textContent = 'Registration failed: ' + ((err && err.message) || String(err)); }
   }
 
   function buildReportText(r) {
@@ -518,10 +528,10 @@
       fwLatest: $('#idevFwLatest'), fwLocal: $('#idevFwLocal'), fwPick: $('#idevFwPick'), fwPath: $('#idevFwPath'),
       wipeAck: $('#idevWipeAck'), wipeConfirm: $('#idevWipeConfirm'), wipeStart: $('#idevWipeStart'), wipeCancel: $('#idevWipeCancel'),
       wipeProg: $('#idevWipeProg'), wipeBar: $('#idevWipeBar'), wipeMsg: $('#idevWipeMsg'),
-      syncro: $('#idevSyncro'), syncroInfo: $('#idevSyncroInfo'), syncroQuery: $('#idevSyncroQuery'),
-      syncroFind: $('#idevSyncroFind'), syncroResults: $('#idevSyncroResults'), syncroMsg: $('#idevSyncroMsg'), syncroClose: $('#idevSyncroClose'),
-      syncroChosen: $('#idevSyncroChosen'), syncroCustName: $('#idevSyncroCustName'), syncroChangeCust: $('#idevSyncroChangeCust'),
-      syncroAsAsset: $('#idevSyncroAsAsset'), syncroAsTicket: $('#idevSyncroAsTicket'), syncroTickets: $('#idevSyncroTickets'),
+      syncro: $('#idevSyncro'), syncroInfo: $('#idevSyncroInfo'), syncroMsg: $('#idevSyncroMsg'), syncroClose: $('#idevSyncroClose'), syncroBack: $('#idevSyncroBack'),
+      syncroModeChoice: $('#idevSyncroMode'), syncroModeTicket: $('#idevSyncroModeTicket'), syncroModeAsset: $('#idevSyncroModeAsset'),
+      syncroTicketMode: $('#idevSyncroTicketMode'), syncroTicketFilter: $('#idevSyncroTicketFilter'), syncroTicketRefresh: $('#idevSyncroTicketRefresh'), syncroTickets: $('#idevSyncroTickets'),
+      syncroAssetMode: $('#idevSyncroAssetMode'), syncroQuery: $('#idevSyncroQuery'), syncroFind: $('#idevSyncroFind'), syncroResults: $('#idevSyncroResults'),
     };
     if (!els.readBtn) return; // panel not present
 
@@ -564,9 +574,11 @@
     if (els.syncroClose) els.syncroClose.addEventListener('click', () => show(els.syncro, false));
     if (els.syncroFind) els.syncroFind.addEventListener('click', syncroSearch);
     if (els.syncroQuery) els.syncroQuery.addEventListener('keydown', (e) => { if (e.key === 'Enter') syncroSearch(); });
-    if (els.syncroAsAsset) els.syncroAsAsset.addEventListener('click', registerAsAsset);
-    if (els.syncroAsTicket) els.syncroAsTicket.addEventListener('click', loadTickets);
-    if (els.syncroChangeCust) els.syncroChangeCust.addEventListener('click', () => { show(els.syncroChosen, false); els.syncroQuery.value = ''; els.syncroQuery.focus(); els.syncroMsg.textContent = ''; });
+    if (els.syncroModeTicket) els.syncroModeTicket.addEventListener('click', loadActiveTickets);
+    if (els.syncroModeAsset) els.syncroModeAsset.addEventListener('click', () => { syncroShowMode('asset'); els.syncroResults.innerHTML = ''; els.syncroQuery.value = ''; els.syncroQuery.focus(); });
+    if (els.syncroTicketRefresh) els.syncroTicketRefresh.addEventListener('click', loadActiveTickets);
+    if (els.syncroTicketFilter) els.syncroTicketFilter.addEventListener('input', filterTickets);
+    if (els.syncroBack) els.syncroBack.addEventListener('click', () => { syncroShowMode('choice'); });
 
     refreshStatus(); // starts the connect-watcher itself once tools are confirmed
   }
